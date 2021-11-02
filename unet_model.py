@@ -1,71 +1,73 @@
 # implemented by Prats Bhatt
 # original unet model created by Olaf Ronneberger, Philipp Fischer, Thomas Brox
 import tensorflow as tf
-from tensorflow.keras import layers
+from tensorflow.keras.layers import *
 
 
-def unet_classifier():
-    # declaring the input layer
-    # Input layer expects an RGB image, in the original paper the network consisted of only one channel.
-    inputs = layers.Input(shape=(572, 572, 1))
+def unet_classifier(input_size):
+    initializer = 'he_normal'
 
-    # first part of the U - contracting part
-    c0 = layers.Conv2D(64, activation='relu', kernel_size=3)(inputs)
-    c1 = layers.Conv2D(64, activation='relu', kernel_size=3)(c0)  # This layer for concatenating in the expansive part
-    c2 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(c1)
+    # -- Encoder -- #
+    # Block encoder 1
+    inputs = Input(shape=input_size)
 
-    c3 = layers.Conv2D(128, activation='relu', kernel_size=3)(c2)
-    c4 = layers.Conv2D(128, activation='relu', kernel_size=3)(c3)  # This layer for concatenating in the expansive part
-    c5 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(c4)
+    conv_enc_1 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(inputs)
+    conv_enc_1 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_enc_1)
 
-    c6 = layers.Conv2D(256, activation='relu', kernel_size=3)(c5)
-    c7 = layers.Conv2D(256, activation='relu', kernel_size=3)(c6)  # This layer for concatenating in the expansive part
-    c8 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(c7)
+    # Block encoder 2
+    max_pool_enc_2 = MaxPooling2D(pool_size=(2, 2))(conv_enc_1)
+    conv_enc_2 = Conv2D(128, 3, activation='relu', padding='same', kernel_initializer=initializer)(max_pool_enc_2)
+    conv_enc_2 = Conv2D(128, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_enc_2)
 
-    c9 = layers.Conv2D(512, activation='relu', kernel_size=3)(c8)
-    c10 = layers.Conv2D(512, activation='relu', kernel_size=3)(c9)  # This layer for concatenating in the expansive part
-    c11 = layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='valid')(c10)
+    # Block  encoder 3
+    max_pool_enc_3 = MaxPooling2D(pool_size=(2, 2))(conv_enc_2)
+    conv_enc_3 = Conv2D(256, 3, activation='relu', padding='same', kernel_initializer=initializer)(max_pool_enc_3)
+    conv_enc_3 = Conv2D(256, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_enc_3)
 
-    c12 = layers.Conv2D(1024, activation='relu', kernel_size=3)(c11)
-    c13 = layers.Conv2D(1024, activation='relu', kernel_size=3, padding='valid')(c12)
+    # Block  encoder 4
+    max_pool_enc_4 = MaxPooling2D(pool_size=(2, 2))(conv_enc_3)
+    conv_enc_4 = Conv2D(512, 3, activation='relu', padding='same', kernel_initializer=initializer)(max_pool_enc_4)
+    conv_enc_4 = Conv2D(512, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_enc_4)
+    # -- Encoder -- #
 
-    # We will now start the second part of the U - expansive part
-    t01 = layers.Conv2DTranspose(512, kernel_size=2, strides=(2, 2), activation='relu')(c13)
-    crop01 = layers.Cropping2D(cropping=(4, 4))(c10)
+    # ----------- #
+    maxpool = MaxPooling2D(pool_size=(2, 2))(conv_enc_4)
+    conv = Conv2D(1024, 3, activation='relu', padding='same', kernel_initializer=initializer)(maxpool)
+    conv = Conv2D(1024, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv)
+    # ----------- #
 
-    concat01 = layers.concatenate([t01, crop01], axis=-1)
+    # -- Dencoder -- #
+    # Block decoder 1
+    up_dec_1 = Conv2D(512, 2, activation='relu', padding='same', kernel_initializer=initializer)(
+        UpSampling2D(size=(2, 2))(conv))
+    merge_dec_1 = concatenate([conv_enc_4, up_dec_1], axis=3)
+    conv_dec_1 = Conv2D(512, 3, activation='relu', padding='same', kernel_initializer=initializer)(merge_dec_1)
+    conv_dec_1 = Conv2D(512, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_1)
 
-    c14 = layers.Conv2D(512, activation='relu', kernel_size=3)(concat01)
-    c15 = layers.Conv2D(512, activation='relu', kernel_size=3)(c14)
+    # Block decoder 2
+    up_dec_2 = Conv2D(256, 2, activation='relu', padding='same', kernel_initializer=initializer)(
+        UpSampling2D(size=(2, 2))(conv_dec_1))
+    merge_dec_2 = concatenate([conv_enc_3, up_dec_2], axis=3)
+    conv_dec_2 = Conv2D(256, 3, activation='relu', padding='same', kernel_initializer=initializer)(merge_dec_2)
+    conv_dec_2 = Conv2D(256, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_2)
 
-    t02 = layers.Conv2DTranspose(256, kernel_size=2, strides=(2, 2), activation='relu')(c15)
-    crop02 = layers.Cropping2D(cropping=(16, 16))(c7)
+    # Block decoder 3
+    up_dec_3 = Conv2D(128, 2, activation='relu', padding='same', kernel_initializer=initializer)(
+        UpSampling2D(size=(2, 2))(conv_dec_2))
+    merge_dec_3 = concatenate([conv_enc_2, up_dec_3], axis=3)
+    conv_dec_3 = Conv2D(128, 3, activation='relu', padding='same', kernel_initializer=initializer)(merge_dec_3)
+    conv_dec_3 = Conv2D(128, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_3)
 
-    concat02 = layers.concatenate([t02, crop02], axis=-1)
+    # Block decoder 4
+    up_dec_4 = Conv2D(64, 2, activation='relu', padding='same', kernel_initializer=initializer)(
+        UpSampling2D(size=(2, 2))(conv_dec_3))
+    merge_dec_4 = concatenate([conv_enc_1, up_dec_4], axis=3)
+    conv_dec_4 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(merge_dec_4)
+    conv_dec_4 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_4)
+    conv_dec_4 = Conv2D(2, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_4)
 
-    c16 = layers.Conv2D(256, activation='relu', kernel_size=3)(concat02)
-    c17 = layers.Conv2D(256, activation='relu', kernel_size=3)(c16)
-
-    t03 = layers.Conv2DTranspose(128, kernel_size=2, strides=(2, 2), activation='relu')(c17)
-    crop03 = layers.Cropping2D(cropping=(40, 40))(c4)
-
-    concat03 = layers.concatenate([t03, crop03], axis=-1)
-
-    c18 = layers.Conv2D(128, activation='relu', kernel_size=3)(concat03)
-    c19 = layers.Conv2D(128, activation='relu', kernel_size=3)(c18)
-
-    t04 = layers.Conv2DTranspose(64, kernel_size=2, strides=(2, 2), activation='relu')(c19)
-    crop04 = layers.Cropping2D(cropping=(88, 88))(c1)
-
-    concat04 = layers.concatenate([t04, crop04], axis=-1)
-
-    c20 = layers.Conv2D(64, activation='relu', kernel_size=3)(concat04)
-    c21 = layers.Conv2D(64, activation='relu', kernel_size=3)(c20)
-
-    # This is based on our dataset. The output channels are 3, think of it as each pixel will be classified
-    # into three classes, but I have written 4 here, as I do padding with 0, so we end up have four classes.
-    outputs = layers.Conv2D(2, kernel_size=1)(c21)
-
-    model = tf.keras.Model(inputs, outputs, name="u-netmodel")
+    # -- Dencoder -- #
+    output = Conv2D(2, 1, activation='softmax')(conv_dec_4)
+    model = tf.keras.Model(inputs, output, name="u-netmodel")
 
     return model
