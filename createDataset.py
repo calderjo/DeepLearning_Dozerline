@@ -9,6 +9,22 @@ from arcpy import sa
 from arcpy import ia
 
 
+def create_dataset_method1(source_raster_layers, source_class, target_directory):
+
+    for raster in source_raster_layers:
+        create_image_chips_method1(raster, source_class, target_directory, False, "#")
+
+    return
+
+
+def create_dataset_method2(source_raster_layers, source_class, target_directory):
+
+    for raster in source_raster_layers:
+        create_image_chips_method2(raster, source_class, target_directory)
+
+    return
+
+
 def create_image_chips_method1(source_raster, source_class, target_directory, save_raster, raster_name):
     # load up the original raster from the source
     original_raster = sa.Raster(source_raster)
@@ -40,10 +56,10 @@ def create_image_chips_method1(source_raster, source_class, target_directory, sa
                                          out_folder=target_directory,
                                          in_class_data=source_class,
                                          image_chip_format="PNG",
-                                         tile_size_x="572",
-                                         tile_size_y="572",
-                                         stride_x="572",
-                                         stride_y="572",
+                                         tile_size_x="512",
+                                         tile_size_y="512",
+                                         stride_x="512",
+                                         stride_y="512",
                                          metadata_format="Classified_Tiles",
                                          start_index=0,
                                          class_value_field=cv_field,
@@ -52,9 +68,24 @@ def create_image_chips_method1(source_raster, source_class, target_directory, sa
     return
 
 
-def create_dataset_method1(source_raster_layers, source_class, target_directory):
+def create_image_chips_method2(source_raster, source_class, cv_field, target_directory):
 
-    for raster in source_raster_layers:
-        create_image_chips_method1(raster, source_class, target_directory, False, "#")
+    # creating image chips
+    arcpy.env.extent = source_raster
+    arcpy.env.cellSize = source_raster
+    arcpy.env.overwriteOutput = 1
 
+    ia.ExportTrainingDataForDeepLearning(in_raster=source_raster,
+                                         out_folder=target_directory,
+                                         in_class_data=source_class,
+                                         image_chip_format="PNG",
+                                         tile_size_x="512",
+                                         tile_size_y="512",
+                                         stride_x="512",
+                                         stride_y="512",
+                                         metadata_format="Classified_Tiles",
+                                         start_index=0,
+                                         class_value_field=cv_field,
+                                         rotation_angle=0
+                                         )
     return

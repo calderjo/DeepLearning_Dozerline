@@ -1,48 +1,53 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import models
 from tensorflow.python.keras.callbacks import TensorBoard
-from tensorflow.keras import metrics
-import numpy as np
+
+from keras_unet import models
+
 from unet_model import unet_classifier
-from createDataSplit import create_data_split
 
 
-def train_unet():
-    """"
-    source_raster = [w, x, y, z,]
-    source_class = sc
-    destination_folder = df
-    create_dataset_method1(source, source_class, df)
-    """
+def train_unet(train, val, model_name):
 
-    # Creates a 70, 20, 10 percent split
-    train_data, train_label, val_data, val_label, test_data, test_label = \
-        create_data_split(image_directory="C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset/images/",
-                          label_directory="C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset/labels/",
-                          train_ratio=.7,
-                          val_ratio=.2,
-                          test_ratio=.1,
-                          seed=479)
-
-    model = unet_classifier()
-
+    model = models.custom_unet(input_shape=(512, 512, 3))
     print(model.summary())
 
+
+
+
+    """
+        model = unet_classifier((572, 572, 3))
+
+    print(model.summary())
+    
+    
+
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
-                  loss=keras.losses.categorical_crossentropy,
-                  metrics=metrics.Accuracy())
+                  loss=tf.keras.losses.BinaryCrossentropy(),
+                  metrics={keras.metrics.Accuracy(), tf.keras.metrics.MeanIoU(num_classes=2)}
+                  )
 
-    model1_tb_callback = TensorBoard(log_dir='logs', histogram_freq=0, write_graph=True, write_images=True,
-                                     write_steps_per_second=False, update_freq='epoch', profile_batch=2,
-                                     embeddings_freq=0, embeddings_metadata=None)
+    model1_tb_callback = TensorBoard(log_dir='logs',
+                                     histogram_freq=0,
+                                     write_graph=True,
+                                     write_images=True,
+                                     write_steps_per_second=False,
+                                     update_freq='epoch',
+                                     profile_batch=2,
+                                     embeddings_freq=0,
+                                     embeddings_metadata=None
+                                     )
 
-    model.fit(x=train_data, y=train_label, batch_size=8, callbacks=[model1_tb_callback], epochs=8,
-              validation_data=(val_data, val_label)
+    model.fit(x=train,
+              batch_size=8,
+              callbacks=[model1_tb_callback],
+              epochs=10,
+              validation_data=val
               )
 
     model.save("./Model_1")
-    return
+    
+    """
 
+    return 0
 
-train_unet()

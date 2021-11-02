@@ -10,7 +10,6 @@ def unet_classifier(input_size):
     # -- Encoder -- #
     # Block encoder 1
     inputs = Input(shape=input_size)
-
     conv_enc_1 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(inputs)
     conv_enc_1 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_enc_1)
 
@@ -65,9 +64,10 @@ def unet_classifier(input_size):
     conv_dec_4 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(merge_dec_4)
     conv_dec_4 = Conv2D(64, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_4)
     conv_dec_4 = Conv2D(2, 3, activation='relu', padding='same', kernel_initializer=initializer)(conv_dec_4)
-
     # -- Dencoder -- #
+
     output = Conv2D(2, 1, activation='softmax')(conv_dec_4)
-    model = tf.keras.Model(inputs, output, name="u-netmodel")
+
+    model = tf.keras.Model(inputs=inputs, outputs=output)
 
     return model

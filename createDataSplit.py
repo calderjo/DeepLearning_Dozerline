@@ -29,12 +29,21 @@ def load_image_dataset(path_dataset, seed):
 
     # after mapping parse_image, dataset now holds both image and mask
     val_dataset = tf.data.Dataset.list_files(path_dataset + "val/images/*.png", shuffle=True, seed=seed)
-    val_dataset.map(parse_image)
-    val_dataset.map(load_image_test)
+    val_dataset = val_dataset.map(parse_image)
+    val_dataset = val_dataset.map(load_image_test)
 
     dataset = {"train": train_dataset, "val": val_dataset}
 
     return dataset
+
+
+def load_test_dataset(path_dataset, seed):
+    # after mapping parse_image, dataset now holds both image and mask
+    test_dataset = tf.data.Dataset.list_files(path_dataset + "/images/*.png", shuffle=True, seed=seed)
+    test_dataset = test_dataset.map(parse_image)
+    test_dataset = test_dataset.map(load_image_test)
+
+    return test_dataset
 
 
 def parse_image(img_path: str) -> dict:
@@ -68,6 +77,9 @@ def load_image_train(datapoint: dict) -> tuple:
 @tf.function
 def load_image_test(datapoint: dict) -> tuple:
     # Here we normalize the test/validation set, future will have more preprocessing
+    # here we normalize the training, future we could add reproducible transformation
+    input_image = tf.image.resize(datapoint['image'], (572, 572))
+    input_mask = tf.image.resize(datapoint['segmentation_mask'], (572, 572))
     input_image, input_mask = normalize(datapoint['image'], datapoint['segmentation_mask'])
     return input_image, input_mask
 
