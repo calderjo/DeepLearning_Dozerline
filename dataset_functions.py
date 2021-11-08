@@ -1,10 +1,13 @@
+import keras_preprocessing.image.utils
 import matplotlib.pyplot as plt
 import numpy as np
 import shutil
 from sklearn.model_selection import train_test_split
 import os
 import tensorflow as tf
+import tensorflow.keras
 import glob
+
 
 """
 Cool thing is that tensor flow dataset have a map function where an operation passed can be performed
@@ -25,6 +28,12 @@ def load_image_dataset(path_dataset, seed):
 
     train_dataset = tf.data.Dataset.list_files(path_dataset + "train/images/*.png", seed=seed)
     train_dataset = train_dataset.map(parse_image)
+
+    for mask in train_dataset.take(1):
+        sample_mask = mask['segmentation_mask']
+
+    display_sample([sample_mask])
+
     train_dataset = train_dataset.map(load_image_train)
 
     # after mapping parse_image, dataset now holds both image and mask
@@ -60,16 +69,16 @@ def parse_image(img_path: str) -> dict:
     mask_path = tf.strings.regex_replace(img_path, "images", "labels")
     mask = tf.io.read_file(mask_path)
     mask = tf.image.decode_png(mask, channels=1)
-    mask = tf.where(mask == 255, np.dtype('uint8').type(1), mask)
 
+    # mask = tf.where(mask == 255, np.dtype('uint8').type(1), mask)
     return {'image': image, 'segmentation_mask': mask}
 
 
 @tf.function
 def load_image_train(datapoint: dict) -> tuple:
     # here we normalize the training, future we could add reproducible transformation
-    input_image = tf.image.resize(datapoint['image'], (572, 572))
-    input_mask = tf.image.resize(datapoint['segmentation_mask'], (572, 572))
+    input_image = tf.image.resize(datapoint['image'], (512, 512))
+    input_mask = tf.image.resize(datapoint['segmentation_mask'], (512, 512))
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
@@ -78,9 +87,9 @@ def load_image_train(datapoint: dict) -> tuple:
 def load_image_test(datapoint: dict) -> tuple:
     # Here we normalize the test/validation set, future will have more preprocessing
     # here we normalize the training, future we could add reproducible transformation
-    input_image = tf.image.resize(datapoint['image'], (572, 572))
-    input_mask = tf.image.resize(datapoint['segmentation_mask'], (572, 572))
-    input_image, input_mask = normalize(datapoint['image'], datapoint['segmentation_mask'])
+    input_image = tf.image.resize(datapoint['image'], (512, 512))
+    input_mask = tf.image.resize(datapoint['segmentation_mask'], (512, 512))
+    input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
 
@@ -103,7 +112,8 @@ def display_sample(display_list):
         plt.subplot(1, len(display_list), i + 1)
         plt.title(title[i])
         image = display_list[i]
-        image = tf.keras.preprocessing.image.array_to_img(image)
+        image = keras_preprocessing.image.utils.array_to_img(image, scale=False)
+        pix = np.array(image)
         plt.imshow(image)
         plt.axis('off')
 
