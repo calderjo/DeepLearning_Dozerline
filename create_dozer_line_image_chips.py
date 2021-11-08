@@ -13,8 +13,8 @@ def create_dozer_line_image_chips_via_saved_raster_layers(
     train_raster_layers = sorted(train_raster_layers)
     test_raster_layers = sorted(test_raster_layers)
 
-    raster_to_image_chips.create_image_chips_from_saved_raster(train_raster_layers, class_layer, class_val, train_path)
-    raster_to_image_chips.create_image_chips_from_saved_raster(test_raster_layers, class_layer, class_val, test_path)
+    raster_to_image_chips.create_dataset_from_saved_raster(train_raster_layers, class_layer, class_val, train_path)
+    raster_to_image_chips.create_dataset_from_saved_raster(test_raster_layers, class_layer, class_val, test_path)
 
     return
 
