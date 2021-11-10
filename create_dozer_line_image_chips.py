@@ -21,13 +21,18 @@ def create_dozer_line_image_chips_via_saved_raster_layers(
 
 create_dozer_line_image_chips_via_saved_raster_layers(
     "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/train",
+
     "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/test",
+
     ["C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedNorthNunns.tif",
      "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedSouthNunns.tif",
-     "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedNorthTubbs.tif",
+     "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedPocket.tif",
      "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedSouthTubbs.tif"],
-    ["C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedPocket.tif"],
+
+    ["C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedNorthTubbs.tif"],
+
     "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineLocation/Corrected_2017_Polygonal_Dozerlines.gdb"
     "/Canopy_Corrected_Dozerline_Data",
+
     "Class_Val"
 )

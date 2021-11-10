@@ -5,91 +5,67 @@ import shutil
 from sklearn.model_selection import train_test_split
 import os
 import tensorflow as tf
-import tensorflow.keras
 import glob
+import segmentation_models as sm
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import albumentations as data_aug
+import random
 
 
-"""
-Cool thing is that tensor flow dataset have a map function where an operation passed can be performed
-across the entire dataset
-"""
-
-
-def load_image_dataset(path_dataset, seed):
-    """
-    :param
-    path_dataset: takes in the path of the image dataset assume that directory is in the form
-                dataset:
-                        mages:
-                        labels:
-    seed: select seed for shuffle
-    :return: return tensor flow dataset
-    """
+def load_training_validation_dataset(path_dataset, seed):
 
     train_dataset = tf.data.Dataset.list_files(path_dataset + "train/images/*.png", seed=seed)
-    train_dataset = train_dataset.map(parse_image)
+    train_dataset = train_dataset.map(read_image_and_find_mask)
+    train_dataset = train_dataset.map(training_set_processing)
 
-    for mask in train_dataset.take(1):
-        sample_mask = mask['segmentation_mask']
-
-    display_sample([sample_mask])
-
-    train_dataset = train_dataset.map(load_image_train)
-
-    # after mapping parse_image, dataset now holds both image and mask
     val_dataset = tf.data.Dataset.list_files(path_dataset + "val/images/*.png", shuffle=True, seed=seed)
-    val_dataset = val_dataset.map(parse_image)
-    val_dataset = val_dataset.map(load_image_test)
+    val_dataset = val_dataset.map(read_image_and_find_mask)
+    val_dataset = val_dataset.map(test_set_processing)
 
     dataset = {"train": train_dataset, "val": val_dataset}
 
     return dataset
 
 
-def load_test_dataset(path_dataset, seed):
-    # after mapping parse_image, dataset now holds both image and mask
-    test_dataset = tf.data.Dataset.list_files(path_dataset + "/images/*.png", shuffle=True, seed=seed)
-    test_dataset = test_dataset.map(parse_image)
-    test_dataset = test_dataset.map(load_image_test)
-
-    return test_dataset
-
-
-def parse_image(img_path: str) -> dict:
-    """
-    :param img_path : str - Image (not the mask) location.
-    :return dict: Dictionary mapping an image and its annotation.
-    Load an image and its annotation (mask) and returning
-    a dictionary.
-    """
+def read_image_and_find_mask(img_path: str) -> dict:
     image = tf.io.read_file(img_path)
-    image = tf.image.decode_png(image, channels=3)
+    image = tf.image.decode_png(image, channels=3, dtype=tf.uint16)
     image = tf.image.convert_image_dtype(image, tf.uint8)
 
     mask_path = tf.strings.regex_replace(img_path, "images", "labels")
     mask = tf.io.read_file(mask_path)
-    mask = tf.image.decode_png(mask, channels=1)
+    mask = tf.image.decode_png(mask, channels=1, dtype=tf.uint16)
+    mask = tf.image.convert_image_dtype(mask, tf.uint8)
+    mask = tf.where(mask == 255, np.dtype('uint8').type(1), mask)
 
-    # mask = tf.where(mask == 255, np.dtype('uint8').type(1), mask)
     return {'image': image, 'segmentation_mask': mask}
 
 
+def load_test_dataset(path_dataset, seed):
+    test_dataset = tf.data.Dataset.list_files(path_dataset + "/images/*.png", shuffle=True, seed=seed)
+    test_dataset = test_dataset.map(read_image_and_find_mask)
+    test_dataset = test_dataset.map(test_set_processing)
+
+    return test_dataset
+
+
 @tf.function
-def load_image_train(datapoint: dict) -> tuple:
-    # here we normalize the training, future we could add reproducible transformation
+def training_set_processing(datapoint: dict) -> tuple:
     input_image = tf.image.resize(datapoint['image'], (512, 512))
+    input_image = tf.keras.applications.resnet50.preprocess_input(input_image)
+
     input_mask = tf.image.resize(datapoint['segmentation_mask'], (512, 512))
-    input_image, input_mask = normalize(input_image, input_mask)
+
+    # after resizing, i will be able to apply augmentation
     return input_image, input_mask
 
 
 @tf.function
-def load_image_test(datapoint: dict) -> tuple:
-    # Here we normalize the test/validation set, future will have more preprocessing
-    # here we normalize the training, future we could add reproducible transformation
+def test_set_processing(datapoint: dict) -> tuple:
     input_image = tf.image.resize(datapoint['image'], (512, 512))
+    input_image = tf.keras.applications.resnet50.preprocess_input(input_image)
+
     input_mask = tf.image.resize(datapoint['segmentation_mask'], (512, 512))
-    input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
 
@@ -101,9 +77,7 @@ def normalize(input_image: tf.Tensor, input_mask: tf.Tensor) -> tuple:
 
 
 def display_sample(display_list):
-    """Show side-by-side an input image,
-    the ground truth and the prediction.
-    """
+
     plt.figure(figsize=(18, 18))
 
     title = ['Input Image', 'True Mask', 'Predicted Mask']
@@ -113,7 +87,6 @@ def display_sample(display_list):
         plt.title(title[i])
         image = display_list[i]
         image = keras_preprocessing.image.utils.array_to_img(image, scale=False)
-        pix = np.array(image)
         plt.imshow(image)
         plt.axis('off')
 

@@ -5,33 +5,34 @@ import dataset_functions
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.python.keras.callbacks import TensorBoard
+import numpy as np
+
 import segmentation_models as sm
+
 
 import dataset_functions
 
 
 def main():
+    seed = 479  # seed for reproducibility
+    input_size = (512, 512, 3)  # image size
+    n_classes = 1  # one class for dozerline, non dozerline does not count as a class
 
-    # this dir holds images that will be used for the training process
     # this dir holds images that will be used for the training process
     training_img_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/train"
-
-    input_size = (512, 512, 3)  # image size
-    n_classes = 1
-    seed = 479  # seed for reproducibility
 
     # here we create the train-val split 80 - 20
     # folder for resulting dir
     dataset_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset/"
     dataset_functions.create_training_validation(training_img_path, dataset_path, .20, seed)
-    dataset = dataset_functions.load_image_dataset(dataset_path, seed)
+    dataset = dataset_functions.load_training_validation_dataset(dataset_path, seed)
 
     BATCH_SIZE = 8
-    BUFFER_SIZE = 1000
+    BUFFER_SIZE = 700
 
     # -- Train Dataset --#
     dataset['train'] = dataset['train'].shuffle(buffer_size=BUFFER_SIZE, seed=seed)
-    dataset['train'] = dataset['train'].repeat()
+    dataset['train'] = dataset['train'].repeat(count=-1)
     dataset['train'] = dataset['train'].batch(BATCH_SIZE)
     dataset['train'] = dataset['train'].prefetch(buffer_size=AUTOTUNE)
 
@@ -40,40 +41,8 @@ def main():
     dataset['val'] = dataset['val'].batch(BATCH_SIZE)
     dataset['val'] = dataset['val'].prefetch(buffer_size=AUTOTUNE)
 
-    for image, mask in dataset['train'].take(1):
-        sample_image, sample_mask = image, mask
-
-    dataset_functions.display_sample([sample_image[0], sample_mask[0]])
-
-
-    """"
-    print(dataset['train'])
-    print(dataset['val'])
-
-    EPOCHS = 1
-
-    STEPS_PER_EPOCH = 616 // BATCH_SIZE
-    VALIDATION_STEPS = 154 // BATCH_SIZE
-
-    keras.backend.set_image_data_format('channels_last')
-    # or keras.backend.set_image_data_format('channels_first')
-    
-    model = sm.Unet('resnet34',
-                    classes=1,
-                    activation='sigmoid',
-                    input_size=(512, 512, 3),
-                    encoder_weights='imagenet')
-
-
-    print(model.summary())
-
-    # here we set the opt and loss, metric values are printed during process
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.1),
-                  loss=tf.keras.losses.BinaryCrossentropy(),
-                  metrics=keras.metrics.Accuracy())
-
     # very cool, let's us visualize the training process
-    s_unet_tensorflow = TensorBoard(log_dir='logs',
+    s_unet_tensorflow = TensorBoard(log_dir='logs_unetM3',
                                     histogram_freq=0,
                                     write_graph=True,
                                     write_images=True,
@@ -83,6 +52,25 @@ def main():
                                     embeddings_freq=0,
                                     embeddings_metadata=None)
 
+    sm.set_framework('tf.keras')
+
+    model = sm.Unet(backbone_name='resnet50',
+                    input_shape=(512, 512, 3),
+                    classes=1,
+                    activation='sigmoid',
+                    encoder_weights='imagenet')
+
+    print(model.summary())
+
+    # here we set the opt and loss, metric values are printed during process
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.001),
+                  loss=sm.losses.bce_jaccard_loss,
+                  metrics=[sm.metrics.iou_score])
+
+    EPOCHS = 10
+    STEPS_PER_EPOCH = 616 // BATCH_SIZE
+    VALIDATION_STEPS = 154 // BATCH_SIZE
+
     model.fit(x=dataset['train'],
               batch_size=4,
               callbacks=[s_unet_tensorflow],
@@ -91,10 +79,9 @@ def main():
               validation_steps=VALIDATION_STEPS,
               validation_data=dataset['val'])
 
-    model.save("s_unet_tensorflow")
-    model.save_weights("./s_unet_tensorflow_weights")
+    model.save("./unet_tensorflow_method3")
+    model.save_weights("./unet_tensorflow_weights_method3")
     return 0
-    """
 
 
 main()
