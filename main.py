@@ -36,13 +36,18 @@ def main():
     dataset['train'] = dataset['train'].batch(BATCH_SIZE)
     dataset['train'] = dataset['train'].prefetch(buffer_size=AUTOTUNE)
 
+    for image, mask in dataset['train'].take(1):
+        sample_image, sample_mask = image, mask
+
+    dataset_functions.display_sample([sample_image[0], sample_mask[0]])
+
     # -- Validation Dataset --#
-    dataset['val'] = dataset['val'].repeat()
+    dataset['val'] = dataset['val'].repeat(count=-1)
     dataset['val'] = dataset['val'].batch(BATCH_SIZE)
     dataset['val'] = dataset['val'].prefetch(buffer_size=AUTOTUNE)
 
     # very cool, let's us visualize the training process
-    s_unet_tensorflow = TensorBoard(log_dir='logs_unetM3',
+    s_unet_tensorflow = TensorBoard(log_dir='logs_unetM4',
                                     histogram_freq=0,
                                     write_graph=True,
                                     write_images=True,
@@ -79,8 +84,8 @@ def main():
               validation_steps=VALIDATION_STEPS,
               validation_data=dataset['val'])
 
-    model.save("./unet_tensorflow_method3")
-    model.save_weights("./unet_tensorflow_weights_method3")
+    model.save("./unet_tensorflow_method4")
+    model.save_weights("./unet_tensorflow_weights_method4")
     return 0
 
 

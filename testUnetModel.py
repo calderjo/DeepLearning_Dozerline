@@ -5,7 +5,6 @@ from keras_unet import models
 
 import dataset_functions
 
-
 def test_unet(model_name, test_img, seed):
     test_img_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/test"
     test_set = dataset_functions.load_test_dataset(test_img_path, seed)
