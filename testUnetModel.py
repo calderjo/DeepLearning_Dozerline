@@ -1,6 +1,8 @@
 import tensorflow as tf
 from tensorflow import keras
 import dataset_functions
+import segmentation_models as sm
+
 
 def test_unet(model_name, test_img, seed):
     test_img_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/test"
@@ -12,20 +14,11 @@ def test_unet(model_name, test_img, seed):
     if model:
         for image, mask in model.take(10):
             pred_mask = model.predict(image)
-            dataset_functions.display_sample([image[0], mask, create_mask(pred_mask)])
+            # dataset_functions.display_sample([image[0], mask, create_mask(pred_mask)])
 
 
 def evaluate_model(model_path, test_data_path):
-
-
-
-
-
-
-
-
-
-
+    return
 
 
 """
