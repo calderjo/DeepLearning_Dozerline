@@ -10,6 +10,12 @@ def create_dataset_from_saved_raster(source_raster_layers, source_class, class_v
     return
 
 
+def create_dataset_from_scratch_m1(source_raster_layers, source_class, target_directory):
+    for raster in source_raster_layers:
+        create_image_chips_from_scratch_m1(raster, source_class, target_directory, False, "#")
+    return
+
+
 def create_image_chips_from_saved_raster(source_raster, source_class, cv_field, target_directory):
 
     # creating image chips
@@ -31,12 +37,6 @@ def create_image_chips_from_saved_raster(source_raster, source_class, cv_field, 
                                          class_value_field=cv_field,
                                          rotation_angle=0
                                          )
-    return
-
-
-def create_dataset_from_scratch_m1(source_raster_layers, source_class, target_directory):
-    for raster in source_raster_layers:
-        create_image_chips_from_scratch_m1(raster, source_class, target_directory, False, "#")
     return
 
 

@@ -1,8 +1,5 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.python.keras.callbacks import TensorBoard
-from keras_unet import models
-
 import dataset_functions
 
 def test_unet(model_name, test_img, seed):
@@ -16,6 +13,19 @@ def test_unet(model_name, test_img, seed):
         for image, mask in model.take(10):
             pred_mask = model.predict(image)
             dataset_functions.display_sample([image[0], mask, create_mask(pred_mask)])
+
+
+def evaluate_model(model_path, test_data_path):
+
+
+
+
+
+
+
+
+
+
 
 
 """

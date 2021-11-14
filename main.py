@@ -1,14 +1,9 @@
-from tensorflow.python.data import AUTOTUNE
-
-import raster_to_image_chips
-import dataset_functions
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.python.keras.callbacks import TensorBoard
-import numpy as np
+from tensorflow.python.data import AUTOTUNE
 
 import segmentation_models as sm
-
 
 import dataset_functions
 
@@ -35,11 +30,6 @@ def main():
     dataset['train'] = dataset['train'].repeat(count=-1)
     dataset['train'] = dataset['train'].batch(BATCH_SIZE)
     dataset['train'] = dataset['train'].prefetch(buffer_size=AUTOTUNE)
-
-    for image, mask in dataset['train'].take(1):
-        sample_image, sample_mask = image, mask
-
-    dataset_functions.display_sample([sample_image[0], sample_mask[0]])
 
     # -- Validation Dataset --#
     dataset['val'] = dataset['val'].repeat(count=-1)
