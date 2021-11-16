@@ -1,51 +1,53 @@
+# %%
+import os
 import tensorflow as tf
 from tensorflow import keras
 import dataset_functions
 import segmentation_models as sm
 
 
-def test_unet(model_name, test_img, seed):
-    test_img_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/test"
-    test_set = dataset_functions.load_test_dataset(test_img_path, seed)
-    test_set.batch(8)
+def evaluate_model(model_name, test_set_path, batch_size):
 
-    model = keras.models.load_model('path/to/location')
+    test_image_data = dataset_functions.load_test_dataset(test_set_path)  # apply pre-processing for resnet 50
+    test_image_data = test_image_data.batch(8)  # same as training
 
-    if model:
-        for image, mask in model.take(10):
-            pred_mask = model.predict(image)
-            # dataset_functions.display_sample([image[0], mask, create_mask(pred_mask)])
+    unet_model = keras.models.load_model(model_name,
+                                         custom_objects={
+                                             'iou_score': sm.metrics.iou_score,
+                                             'binary_crossentropy_plus_jaccard_loss': sm.losses.bce_jaccard_loss}
+                                         )
+
+    results = unet_model.evaluate(x=test_image_data, batch_size=batch_size)  # makes prediction on whole test set
+    print("loss: " + str(results[0]))   # printing the loss and iou_score
+    print("iou_score: " + str(results[1]))
+
+    visualize_predictions(test_image_data, unet_model, test_set_path)  # viz predictions made by model
 
 
-def evaluate_model(model_path, test_data_path):
-    return
+def visualize_predictions(test_image_data, model_path, test_set_path):
+
+    # finds all images in the test set
+    files = os.listdir(os.path.join(test_set_path, "images"))
+    test_images = []
+    for file in files:
+        if file.endswith(".png"):
+            test_images.append(file)
+
+    count = 0
+    for image, mask in test_image_data.take(4):   # for all the images in test set
+        predictions = model_path.predict(image).round()   # make a prediction
+
+        for i in range(0, 8):  # plot prediction with the input image and ground truth
+            image = tf.io.read_file((os.path.join(test_set_path, "images", test_images[count])))
+            image = tf.image.decode_png(image, channels=3, dtype=tf.uint16)
+            image = tf.image.convert_image_dtype(image, tf.uint8)
+            dataset_functions.display_sample([image, mask[i], predictions[i]])
+            count += 1
 
 
-"""
-def create_mask(pred_mask: tf.Tensor) -> tf.Tensor:
-    Return a filter mask with the top 1 predictions
-    only.
+evaluate_model(
+    model_name="C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/unet_tensorflow_method5",
+    test_set_path="C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/test",
+    batch_size=8
+)
 
-    Parameters
-    ----------
-    pred_mask : tf.Tensor
-        A [IMG_SIZE, IMG_SIZE, N_CLASS] tensor. For each pixel we have
-        N_CLASS values (vector) which represents the probability of the pixel
-        being these classes. Example: A pixel with the vector [0.0, 0.0, 1.0]
-        has been predicted class 2 with a probability of 100%.
-
-    Returns
-    -------
-    tf.Tensor
-        A [IMG_SIZE, IMG_SIZE, 1] mask with top 1 predictions
-        for each pixels.
-    
-    # pred_mask -> [IMG_SIZE, SIZE, N_CLASS]
-    # 1 prediction for each class but we want the highest score only
-    # so we use argmax
-    pred_mask = tf.argmax(pred_mask, axis=-1)
-    # pred_mask becomes [IMG_SIZE, IMG_SIZE]
-    # but matplotlib needs [IMG_SIZE, IMG_SIZE, 1]
-    pred_mask = tf.expand_dims(pred_mask, axis=-1)
-    return pred_mask
-"""

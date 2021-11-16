@@ -37,7 +37,7 @@ def main():
     dataset['val'] = dataset['val'].prefetch(buffer_size=AUTOTUNE)
 
     # very cool, let's us visualize the training process
-    s_unet_tensorflow = TensorBoard(log_dir='logs_unetM4',
+    s_unet_tensorflow = TensorBoard(log_dir='logs_unetM5',
                                     histogram_freq=0,
                                     write_graph=True,
                                     write_images=True,
@@ -50,8 +50,8 @@ def main():
     sm.set_framework('tf.keras')
 
     model = sm.Unet(backbone_name='resnet50',
-                    input_shape=(512, 512, 3),
-                    classes=1,
+                    input_shape=input_size,
+                    classes=n_classes,
                     activation='sigmoid',
                     encoder_weights='imagenet')
 
@@ -62,7 +62,7 @@ def main():
                   loss=sm.losses.bce_jaccard_loss,
                   metrics=[sm.metrics.iou_score])
 
-    EPOCHS = 10
+    EPOCHS = 20
     STEPS_PER_EPOCH = 616 // BATCH_SIZE
     VALIDATION_STEPS = 154 // BATCH_SIZE
 
@@ -74,8 +74,9 @@ def main():
               validation_steps=VALIDATION_STEPS,
               validation_data=dataset['val'])
 
-    model.save("./unet_tensorflow_method4")
-    model.save_weights("./unet_tensorflow_weights_method4")
+    model.save("./unet_tensorflow_method5")
+    model.save_weights("./unet_tensorflow_weights_method5")
+
     return 0
 
 

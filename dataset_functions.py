@@ -59,17 +59,26 @@ def display_sample(display_list):
     title = ['Input Image', 'True Mask', 'Predicted Mask']
 
     for i in range(len(display_list)):
+
         plt.subplot(1, len(display_list), i + 1)
         plt.title(title[i])
         image = display_list[i]
         image = keras_preprocessing.image.utils.array_to_img(image, scale=False)
-        plt.imshow(image)
+
+        if i > 0:
+            plt.imshow(display_list[0])
+            plt.imshow(image, alpha=0.5)
+        else:
+            plt.imshow(image)
+
         plt.axis('off')
 
     plt.show()
 
+    return
 
-def load_test_dataset(path_dataset, seed):
+
+def load_test_dataset(path_dataset):
     """
     Given the path of the test set, the function will load the images and mask and make them suitable for the
     deep learning model
@@ -78,26 +87,24 @@ def load_test_dataset(path_dataset, seed):
     :param seed:
     :return:
     """
-    test_dataset = tf.data.Dataset.list_files(path_dataset + "/images/*.png", shuffle=True, seed=seed)
-    test_dataset = test_dataset.map(read_image_and_find_mask)
-    test_dataset = test_dataset.map(test_set_processing)
+    test_dataset = tf.data.Dataset.list_files(path_dataset + "/images/*.png", shuffle=False)
+    test_dataset = test_dataset.map(read_image_and_find_mask)  # find respective mask
+    test_dataset = test_dataset.map(test_set_processing)   # apply resnet 50 processing
     return test_dataset
 
 
 def load_training_validation_dataset(path_dataset, seed):
 
     # take the training set and apply transformation, resizing, and preprocessing
-    train_dataset = tf.data.Dataset.list_files(path_dataset + "train/images/*.png", seed=seed)
+    train_dataset = tf.data.Dataset.list_files(path_dataset + "train/images/*.png", shuffle=True, seed=seed)
     train_dataset = train_dataset.map(read_image_and_find_mask)
     train_dataset = train_dataset.map(training_set_processing)
 
     # take the val and apply resizing and preprocessing for res net 50 backbone
-    val_dataset = tf.data.Dataset.list_files(path_dataset + "val/images/*.png", shuffle=True, seed=seed)
+    val_dataset = tf.data.Dataset.list_files(path_dataset + "val/images/*.png", shuffle=False)
     val_dataset = val_dataset.map(read_image_and_find_mask)
     val_dataset = val_dataset.map(test_set_processing)
-
     dataset = {"train": train_dataset, "val": val_dataset}
-
     return dataset
 
 
@@ -147,5 +154,6 @@ def read_image_and_find_mask(img_path: str) -> dict:
     mask = tf.image.convert_image_dtype(mask, tf.uint8)
 
     mask = tf.where(mask == 255, np.dtype('uint8').type(1), mask)
+
     return {'image': image, 'segmentation_mask': mask}
 
