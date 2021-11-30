@@ -46,22 +46,24 @@ def create_training_validation(source_path, destination_path, validation_ratio, 
     return
 
 
-def display_sample(display_list):
+def display_sample(display_list, iou_score):
     """
     Show a viz of the tensor provided
+    :param iou_score: iou score for true mask and prediction mask
     :param display_list: a list of tf.tensors where the order is as follow
     ['Input Image', 'True Mask', 'Predicted Mask']
+    iou_score: iou score for true mask and prediction mask
     :return: None
     """
 
-    plt.figure(figsize=(18, 18))
+    plt.figure(figsize=(9, 4))
 
-    title = ['Input Image', 'True Mask', 'Predicted Mask']
+    title = ["Input Image", "True Mask", "Predicted Mask\n"+"iou score: " + str(f"{iou_score:.4f}")]
 
     for i in range(len(display_list)):
 
         plt.subplot(1, len(display_list), i + 1)
-        plt.title(title[i])
+        plt.title(title[i], {'fontsize': 'xx-large'})
         image = display_list[i]
         image = keras_preprocessing.image.utils.array_to_img(image, scale=False)
 
@@ -74,8 +76,6 @@ def display_sample(display_list):
         plt.axis('off')
 
     plt.show()
-
-    return
 
 
 def load_test_dataset(path_dataset):

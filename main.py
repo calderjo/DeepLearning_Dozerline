@@ -1,81 +1,42 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.python.keras.callbacks import TensorBoard
-from tensorflow.python.data import AUTOTUNE
-
-import segmentation_models as sm
-
-import dataset_functions
+import train_model
 
 
 def main():
-    seed = 479  # seed for reproducibility
-    input_size = (512, 512, 3)  # image size
-    n_classes = 1  # one class for dozerline, non dozerline does not count as a class
+    constants_parameters = {'training_path': "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineImageChips"
+                                             "/bands_IRG_dozer_line/train",
+                            'seed': 479,
+                            'batch_size': 8,
+                            'learning_rate': 0.001,
+                            'reshuffle': True,
+                            'freeze_encoder': True}
 
-    # this dir holds images that will be used for the training process
-    training_img_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/train"
+    method = "bands_IRG_"
 
-    # here we create the train-val split 80 - 20
-    # folder for resulting dir
-    dataset_path = "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset/"
-    dataset_functions.create_training_validation(training_img_path, dataset_path, .20, seed)
-    dataset = dataset_functions.load_training_validation_dataset(dataset_path, seed)
+    epochs_to_test = [5, 10, 15, 20, 25]
 
-    BATCH_SIZE = 8
-    BUFFER_SIZE = 700
+    for i in range(0, 5):
 
-    # -- Train Dataset --#
-    dataset['train'] = dataset['train'].shuffle(buffer_size=BUFFER_SIZE, seed=seed)
-    dataset['train'] = dataset['train'].repeat(count=-1)
-    dataset['train'] = dataset['train'].batch(BATCH_SIZE)
-    dataset['train'] = dataset['train'].prefetch(buffer_size=AUTOTUNE)
+        v = i+1
+        version = str(v)+"_"
+        saving_path = ["C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/train_val_split/",
+                       "unet_v_" + "method_" + method + version + "logs",
+                       "unet_v_" + "method_" + method + version,
+                       "unet_v_" + "method_" + method + version + "weights"]
 
-    # -- Validation Dataset --#
-    dataset['val'] = dataset['val'].repeat(count=-1)
-    dataset['val'] = dataset['val'].batch(BATCH_SIZE)
-    dataset['val'] = dataset['val'].prefetch(buffer_size=AUTOTUNE)
+        print("Starting " + "unet_v_" + "method_" + method + version + " model Training")
 
-    # very cool, let's us visualize the training process
-    s_unet_tensorflow = TensorBoard(log_dir='logs_unetM5',
-                                    histogram_freq=0,
-                                    write_graph=True,
-                                    write_images=True,
-                                    write_steps_per_second=False,
-                                    update_freq='epoch',
-                                    profile_batch=2,
-                                    embeddings_freq=0,
-                                    embeddings_metadata=None)
+        print("epoch " + str(epochs_to_test[i]))
 
-    sm.set_framework('tf.keras')
+        train_model.unet_model_resnet_50_backbone(seed=constants_parameters['seed'],
+                                                  training_set_path=constants_parameters['training_path'],
+                                                  batch_size=constants_parameters['batch_size'],
+                                                  learning_rate=constants_parameters['learning_rate'],
+                                                  num_epochs=epochs_to_test[i],
+                                                  reshuffle_each_iteration=constants_parameters['reshuffle'],
+                                                  saving_path=saving_path,
+                                                  freeze_encoder=constants_parameters['freeze_encoder'])
 
-    model = sm.Unet(backbone_name='resnet50',
-                    input_shape=input_size,
-                    classes=n_classes,
-                    activation='sigmoid',
-                    encoder_weights='imagenet')
-
-    print(model.summary())
-
-    # here we set the opt and loss, metric values are printed during process
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.001),
-                  loss=sm.losses.bce_jaccard_loss,
-                  metrics=[sm.metrics.iou_score])
-
-    EPOCHS = 20
-    STEPS_PER_EPOCH = 616 // BATCH_SIZE
-    VALIDATION_STEPS = 154 // BATCH_SIZE
-
-    model.fit(x=dataset['train'],
-              batch_size=4,
-              callbacks=[s_unet_tensorflow],
-              epochs=EPOCHS,
-              steps_per_epoch=STEPS_PER_EPOCH,
-              validation_steps=VALIDATION_STEPS,
-              validation_data=dataset['val'])
-
-    model.save("./unet_tensorflow_method5")
-    model.save_weights("./unet_tensorflow_weights_method5")
+        print("Finished " + "unet_v_" + "method_" + method + version + " model Training")
 
     return 0
 
