@@ -1,100 +1,103 @@
-from arcpy import sa
-import raster_to_image_chips
+import arcpy
+import os
+import PIL
 
 
-def create_dozer_line_image_chips_via_saved_raster_layers(
-        train_path,
-        test_path,
-        train_raster_layers,
-        test_raster_layers,
-        class_layer,
-        class_val
-):
-    train_raster_layers = sorted(train_raster_layers)
-    test_raster_layers = sorted(test_raster_layers)
+def create_image_and_labels(source_raster,
+                            source_class,
+                            source_class_value,
+                            bands,
+                            target_directory,
+                            output_nofeature_tiles
+                            ):
 
-    raster_to_image_chips.create_dataset_from_saved_raster(train_raster_layers, class_layer, class_val, train_path)
-    raster_to_image_chips.create_dataset_from_saved_raster(test_raster_layers, class_layer, class_val, test_path)
+    # load up the original raster from the source
+    original_raster = arcpy.sa.Raster(source_raster)
 
+    # set environment parameters
+    arcpy.env.cellSize = original_raster
+    arcpy.env.extent = original_raster
+    arcpy.env.overwriteOutput = 1
+
+    # extract spec bands
+    raster_3band = arcpy.sa.ExtractBand(original_raster, bands)  # [x,y,z]
+
+    # remove stretch function
+    processed_raster_3band = arcpy.sa.Stretch(raster=raster_3band, stretch_type="None", gamma=[1, 1, 1])
+
+    # creating image chips
+    arcpy.env.extent = processed_raster_3band
+    arcpy.env.cellSize = processed_raster_3band
+    arcpy.env.workspace = target_directory
+
+    arcpy.ia.ExportTrainingDataForDeepLearning(in_raster=processed_raster_3band,
+                                               out_folder=target_directory,
+                                               in_class_data=source_class,
+                                               image_chip_format="PNG",
+                                               tile_size_x="512",
+                                               tile_size_y="512",
+                                               stride_x="256",
+                                               stride_y="256",
+                                               metadata_format="Classified_Tiles",
+                                               start_index=0,
+                                               class_value_field=source_class_value,
+                                               rotation_angle=0,
+                                               output_nofeature_tiles=output_nofeature_tiles
+                                               )
     return
 
 
-def create_dozer_line_image_chips_bands_irg(
-        train_path,
-        test_path,
-        train_raster_layers,
-        test_raster_layers,
-        class_layer,
-        class_val
-):
+def create_data(target_dir, raster_param, class_params, image_chip_param):
 
-    raster_to_image_chips.create_dataset_from_scratch_m2(source_raster_layers=train_raster_layers,
-                                                         source_class=class_layer,
-                                                         source_class_value=class_val,
-                                                         target_directory=train_path)
+    raster_files = raster_param[0]
+    bands = raster_param[1]
 
-    raster_to_image_chips.create_dataset_from_scratch_m2(source_raster_layers=test_raster_layers,
-                                                         source_class=class_layer,
-                                                         source_class_value=class_val,
-                                                         target_directory=test_path)
+    class_file = class_params[0]
+    class_value = class_params[1]
 
-    return 0
+    output_nofeature_tiles = image_chip_param
+
+    for raster in raster_files:
+        create_image_and_labels(source_raster=raster,
+                                source_class=class_file,
+                                source_class_value=class_value,
+                                bands=bands,
+                                target_directory=target_dir,
+                                output_nofeature_tiles=output_nofeature_tiles
+                                )
+    return
 
 
-create_dozer_line_image_chips_bands_irg(
+def file_processing(file_directory):  # removes excess junk and resolves missing tiles
+    remove_junk_files(os.path.join(file_directory, 'images'))
+    remove_junk_files(os.path.join(file_directory, 'labels'))
+    add_blank_label(os.path.join(file_directory, 'images'), os.path.join(file_directory, 'labels'))
 
-    train_path="C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineImageChips/bands_IRG_dozer_line/train",
 
-    test_path="C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineImageChips/bands_IRG_dozer_line/test",
+def remove_junk_files(file_directory):  # removes file with ext not equal to .png
+    for file in os.listdir(file_directory):
+        if file.endswith('.pgw') or file.endswith('.png.aux.xml') or file.endswith('.png.ovr'):
+            os.remove(os.path.join(file_directory, file))
 
-    train_raster_layers=[
-        "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLine_raster/postFireImagery_2017/Nunns Fire North June 14 "
-        "2018 1 Foot Imagery/nunns_north_june_14_2018.tif",
 
-        "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLine_raster/postFireImagery_2017/Pocket Fire June 14 2018 1 "
-        "Foot Imagery/pocket_june_14_2018.tif",
+def add_blank_label(image_directory, label_directory):
+    images = os.listdir(image_directory)  # gets the name of files from the image and label tiles
+    labels = os.listdir(label_directory)
 
-        "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLine_raster/postFireImagery_2017/Nunns Fire South June 14 "
-        "2018 1 Foot Imagery/nunns_south_june_14_2018.tif",
+    for image in images:
+        if image not in labels:  # images without dozer line, we will create a blank ground truth tile
+            image_label = PIL.Image.new('I;16', (512, 512))
+            image_label.save(os.path.join(label_directory, image), 'PNG')
 
-        "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLine_raster/postFireImagery_2017/Tubbs Fire South June 14 "
-        "2018 1 Foot Imagery/tubbs_south_june_14_2018.tif"],
 
-    test_raster_layers=[
-        "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLine_raster/postFireImagery_2017/Tubbs Fire North June 14 "
-        "2018 1 Foot Imagery/tubbs_north_june_14_2018.tif"],
+def create_dataset(save_path, raster_param, class_params, image_chip_param):
 
-    class_layer="C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineLocation/Corrected_2017_Polygonal_Dozerlines"
-                ".gdb/Canopy_Corrected_Dozerline_Data",
+    train_target_dir = save_path[0]  # where images are saved
+    test_target_dir = save_path[1]
 
-    class_val="Class_Val"
-)
+    create_data(train_target_dir, raster_param, class_params, image_chip_param)  # creating image and labels
+    create_data(test_target_dir, raster_param, class_params, image_chip_param)
 
-"""
-create_dozer_line_image_chips_via_saved_raster_layers(
+    file_processing(train_target_dir)  # we will clean up the folders
+    file_processing(test_target_dir)
 
-    "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/train",
-    
-    "C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/dataset_dozer_line/test",
-    
-    
-    ["C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedNorthNunns.tif",
-    
-     "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedPocket.tif",
-    
-     "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedSouthNunns.tif",
-     
-     "C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedSouthTubbs.tif"
-     ],
-     
-     
-    ["C:/Users/jonat/Documents/ArcGIS/Projects/dLearn_dozerLineExtraction/dozerLine_raster/processedNorthTubbs.tif"],
-    
-    
-    "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineLocation/Corrected_2017_Polygonal_Dozerlines.gdb"
-    "/Canopy_Corrected_Dozerline_Data",
-    
-    
-    "Class_Val"
-)
-"""

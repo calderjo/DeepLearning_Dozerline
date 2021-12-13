@@ -4,6 +4,7 @@ from tensorflow.python.keras.callbacks import TensorBoard
 from tensorflow.python.data import AUTOTUNE
 import segmentation_models as sm
 import dataset_functions
+import os
 
 
 def unet_model_resnet_50_backbone(seed,
@@ -24,7 +25,10 @@ def unet_model_resnet_50_backbone(seed,
     dataset_functions.create_training_validation(training_set_path, dataset_path, .20, seed)
     dataset = dataset_functions.load_training_validation_dataset(dataset_path, seed)
 
-    buffer_size = 700
+    # path joining version for other paths
+    DIR = os.path.join(saving_path[0], "images")
+    numFile = len([name for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))])
+    buffer_size = numFile
 
     # -- Train Dataset --#
     if reshuffle_each_iteration:

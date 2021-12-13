@@ -59,9 +59,9 @@ def visualize_predictions(test_image_data, model_path, test_set_path):
 
 
 evaluate_model(
-    model_name="C:/Users/jonat/Documents/deepLearningModel/dozerlineExtraction/model_v1/Models/test_freeze_encoding"
-               "/unet_v2_method_0a",
-    test_set_path="C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineImageChips/dataset_dozer_line/test",
+    model_name="C:/Users/jonat/Documents/deepLearningModel/dozerlineExtraction/resnet50_unet/cal_fire_dl_trained"
+               "/test_IRG_Bands/model/unet_v_method_bands_IRG_3_",
+    test_set_path="C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineImageChips/bands_IRG_dozer_line/test",
     batch_size=8,
     visualize=True
 )

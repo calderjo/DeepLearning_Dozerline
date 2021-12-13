@@ -1,17 +1,17 @@
+"""
 import os
 import arcpy
 from arcpy import sa
 from arcpy import ia
 
 
-def create_dataset_from_saved_raster(source_raster_layers, source_class, class_val, target_directory):
+def create_dataset_from_saved_raster(source_raster_layers, source_class, class_val, target_directory, output_nofeature_tiles):
     for raster in source_raster_layers:
-        create_image_chips_from_saved_raster(raster, source_class, class_val, target_directory)
+        create_image_chips_from_saved_raster(raster, source_class, class_val, target_directory, output_nofeature_tiles)
     return
 
 
-def create_dataset_from_scratch_m1(source_raster_layers, source_class, target_directory, save_raster, save_names):
-
+def create_dataset_from_scratch_m1(source_raster_layers, source_class, target_directory, save_raster, save_names, output_nofeature_tiles):
     for raster in source_raster_layers:
         create_image_chips_from_scratch(source_raster=raster,
                                         source_class=source_class,
@@ -20,12 +20,13 @@ def create_dataset_from_scratch_m1(source_raster_layers, source_class, target_di
                                         target_directory=target_directory,
                                         save_raster=False,
                                         save_raster_directory="",
-                                        save_raster_name="")
+                                        save_raster_name="",
+                                        output_nofeature_tiles=output_nofeature_tiles)
 
     return
 
 
-def create_dataset_from_scratch_m2(source_raster_layers, source_class, source_class_value,  target_directory):
+def create_dataset_from_scratch_m2(source_raster_layers, source_class, source_class_value, target_directory, output_nofeature_tiles):
     for raster in source_raster_layers:
         create_image_chips_from_scratch(source_raster=raster,
                                         source_class=source_class,
@@ -34,11 +35,13 @@ def create_dataset_from_scratch_m2(source_raster_layers, source_class, source_cl
                                         target_directory=target_directory,
                                         save_raster=False,
                                         save_raster_directory="",
-                                        save_raster_name="")
+                                        save_raster_name="",
+                                        output_nofeature_tiles=output_nofeature_tiles)
     return
 
 
-def create_image_chips_from_saved_raster(source_raster, source_class, cv_field, target_directory):
+def create_image_chips_from_saved_raster(source_raster, source_class, cv_field, target_directory,
+                                         output_nofeature_tiles):
     # creating image chips
     raster_layer = sa.Raster(source_raster)
     arcpy.env.extent = raster_layer
@@ -51,12 +54,13 @@ def create_image_chips_from_saved_raster(source_raster, source_class, cv_field, 
                                          image_chip_format="PNG",
                                          tile_size_x="512",
                                          tile_size_y="512",
-                                         stride_x="512",
-                                         stride_y="512",
+                                         stride_x="256",
+                                         stride_y="256",
                                          metadata_format="Classified_Tiles",
                                          start_index=0,
                                          class_value_field=cv_field,
-                                         rotation_angle=0
+                                         rotation_angle=0,
+                                         output_nofeature_tiles=output_nofeature_tiles
                                          )
     return
 
@@ -68,7 +72,8 @@ def create_image_chips_from_scratch(source_raster,
                                     target_directory,
                                     save_raster,
                                     save_raster_directory,
-                                    save_raster_name
+                                    save_raster_name,
+                                    output_nofeature_tiles
                                     ):
     # load up the original raster from the source
     original_raster = sa.Raster(source_raster)
@@ -99,11 +104,16 @@ def create_image_chips_from_scratch(source_raster,
                                          image_chip_format="PNG",
                                          tile_size_x="512",
                                          tile_size_y="512",
-                                         stride_x="512",
-                                         stride_y="512",
+                                         stride_x="256",
+                                         stride_y="256",
                                          metadata_format="Classified_Tiles",
                                          start_index=0,
                                          class_value_field=source_class_value,
-                                         rotation_angle=0
+                                         rotation_angle=0,
+                                         output_nofeature_tiles=output_nofeature_tiles
                                          )
     return
+
+
+"""
+
