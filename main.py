@@ -1,70 +1,52 @@
+import os
 import train_model
+import tensorflow as tf
 
 
 def main():
-    constants_parameters = {'training_path': "C:/Users/jonat/Documents/Dataset/DozerLine/DozerLineImageChips"
-                                             "/bands_RGB_dozer_line/train",
-                            'seed': 479,
-                            'batch_size': 8,
-                            'learning_rate': 0.001,
-                            'reshuffle': True,
-                            'freeze_encoder': True}
+    print(tf.config.list_physical_devices('GPU'))
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
-    method = "bands_RGB_"
+    UNET_param = {
+        'batch_size': 32,
+        'epochs': 0,
+        'input_size': (256, 256, 3),
+        'learning_rate': 1e-2,
+        'backbone': 'resnet50'
+    }
 
-    epochs_to_test = [5, 10, 15, 20, 25]
+    training_base_dir = "/home/jchavez/dataset/Dirt_Gravel_Roads_False_Image"
+    save_model_dir = "/home/jchavez/model/dozerline_extractor/unet/test"
+    experiment_name = "test"
 
-    i = 2
-    v = 2
-    version = str(v) + "_"
-    saving_path = ["C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/train_val_split/",
-                   "unet_v_" + "method_" + method + version + "logs",
-                   "unet_v_" + "method_" + method + version,
-                   "unet_v_" + "method_" + method + version + "weights"]
+    try:
+        os.makedirs(os.path.join(save_model_dir, experiment_name))
+    except FileExistsError:
+        pass
 
-    print("Starting " + "unet_v_" + "method_" + method + version + " model Training")
+    constants_parameters = {
+        'training_folder': [
+            os.path.join(training_base_dir, "Pocket", "positive_samples"),
+            os.path.join(training_base_dir, "South_Nunns", "positive_samples"),
+            os.path.join(training_base_dir, "North_Nunns", "positive_samples"),
+            os.path.join(training_base_dir, "South_Tubbs", "positive_samples")
+        ],
+        'seed': 479
+    }
 
-    print("epoch " + str(epochs_to_test[i]))
+    testing_epochs = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+    trial_num = 0
 
-    train_model.unet_model_resnet_50_backbone(seed=constants_parameters['seed'],
-                                              training_set_path=constants_parameters['training_path'],
-                                              batch_size=constants_parameters['batch_size'],
-                                              learning_rate=constants_parameters['learning_rate'],
-                                              num_epochs=epochs_to_test[i],
-                                              reshuffle_each_iteration=constants_parameters['reshuffle'],
-                                              saving_path=saving_path,
-                                              freeze_encoder=constants_parameters['freeze_encoder'])
-
-    print("Finished " + "unet_v_" + "method_" + method + version + " model Training")
-
-
-    """
-        for i in range(0, 5):
-
-        v = i+1
-        version = str(v)+"_"
-        saving_path = ["C:/Users/jonat/Documents/DeeplearningDozerlineNotebook/train_val_split/",
-                       "unet_v_" + "method_" + method + version + "logs",
-                       "unet_v_" + "method_" + method + version,
-                       "unet_v_" + "method_" + method + version + "weights"]
-
-        print("Starting " + "unet_v_" + "method_" + method + version + " model Training")
-
-        print("epoch " + str(epochs_to_test[i]))
-
-        train_model.unet_model_resnet_50_backbone(seed=constants_parameters['seed'],
-                                                  training_set_path=constants_parameters['training_path'],
-                                                  batch_size=constants_parameters['batch_size'],
-                                                  learning_rate=constants_parameters['learning_rate'],
-                                                  num_epochs=epochs_to_test[i],
-                                                  reshuffle_each_iteration=constants_parameters['reshuffle'],
-                                                  saving_path=saving_path,
-                                                  freeze_encoder=constants_parameters['freeze_encoder'])
-
-        print("Finished " + "unet_v_" + "method_" + method + version + " model Training")
-    
-    
-    """
+    for numEpochs in testing_epochs:
+        UNET_param['epochs'] = numEpochs
+        train_model.train_UNET_RESNET50_model(
+            seed=constants_parameters['seed'],
+            training_dirs=constants_parameters['training_folder'],
+            UNET_params=UNET_param,
+            experiment_target_dir=os.path.join(save_model_dir, experiment_name),
+            trial_number=trial_num
+        )
+        trial_num += 1
 
     return 0
 

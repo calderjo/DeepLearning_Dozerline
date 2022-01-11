@@ -1,97 +1,126 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.python.keras.callbacks import TensorBoard
-from tensorflow.python.data import AUTOTUNE
-import segmentation_models as sm
 import dataset_functions
+import numpy as np
 import os
+import segmentation_models as sm
+import sklearn.model_selection
+import tensorflow as tf
+from tensorflow.python.data import AUTOTUNE
+from tensorflow.python.keras.callbacks import TensorBoard
 
 
-def unet_model_resnet_50_backbone(seed,
-                                  training_set_path,
-                                  batch_size,
-                                  learning_rate,
-                                  num_epochs,
-                                  reshuffle_each_iteration,
-                                  freeze_encoder,
-                                  saving_path
-                                  ):
-    input_size = (512, 512, 3)
-    n_classes = 1  # one class for dozerline, non dozerline does not count as a class
-    # this dir holds images that will be used for the training process
+def write_model_param_file(UNET_params, experiment_dir, trial_number):
+    fileName = f"trial_{trial_number}_params"
+    param_file = open(fileName, mode="a")
 
-    # here we create the train-val split 80 - 20
-    dataset_path = saving_path[0]
-    dataset_functions.create_training_validation(training_set_path, dataset_path, .20, seed)
-    dataset = dataset_functions.load_training_validation_dataset(dataset_path, seed)
+    input_size = UNET_params['input_size']
+    batch_size = UNET_params['batch_size']
+    epochs = UNET_params['epochs']
+    learning_rate = UNET_params['learning_rate']
+    backbone = UNET_params['backbone']
 
-    # path joining version for other paths
-    DIR = os.path.join(saving_path[0], "images")
-    numFile = len([name for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))])
-    buffer_size = numFile
+    param_file.write(f"input size: {str(input_size)} \n")
+    param_file.write(f"batch size: {str(batch_size)} \n")
+    param_file.write(f"epochs: {str(epochs)} \n")
+    param_file.write(f"learning rate {str(learning_rate)} \n")
+    param_file.write(f"backbone {str(backbone)} \n")
+    param_file.close()
 
-    # -- Train Dataset --#
-    if reshuffle_each_iteration:
-        dataset['train'] = dataset['train'].shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True)
-    else:
-        dataset['train'] = dataset['train'].shuffle(buffer_size=buffer_size, seed=seed)
+    os.rename(fileName, os.path.join(experiment_dir, fileName))
+    return
 
+
+def build_UNET_RESNET50_model(learning_rate, input_size, backbone):
+    model = sm.Unet(backbone_name=backbone,
+                    input_shape=input_size,
+                    classes=1,
+                    activation='sigmoid',
+                    encoder_freeze=True,
+                    encoder_weights='imagenet')
+
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+                  loss=sm.losses.dice_loss,
+                  metrics=[sm.metrics.iou_score])
+    return model
+
+
+def train_UNET_RESNET50_model(
+        seed,
+        training_dirs,
+        UNET_params,
+        experiment_target_dir,
+        trial_number
+):
+    write_model_param_file(UNET_params, experiment_target_dir, trial_number)
+    data_samples = dataset_functions.load_data_paths(training_dirs)
+
+    Array = np.array(data_samples)
+
+    # Displaying the array
+    print('Array:\n', Array)
+    file = open("file1.txt", "w+")
+
+    # Saving the array in a text file
+    content = str(Array)
+    file.write(content)
+    file.close()
+
+    # Displaying the contents of the text file
+    file = open("file1.txt", "r")
+    content = file.read()
+
+    print("\nContent in file1.txt:\n", content)
+    file.close()
+    
+    shuffle_split = sklearn.model_selection.ShuffleSplit(n_splits=1, test_size=.3, random_state=seed)
+    split_gen = shuffle_split.split(X=data_samples)
+    train_indexes, val_indexes = next(split_gen)
+
+    dataset = dataset_functions.load_training_validation_dataset(
+        training=data_samples[train_indexes],
+        validation=data_samples[val_indexes],
+        seed=seed
+    )
+
+    data_samples = None
+    buffer_size = len(train_indexes)
+
+    # Train Dataset prepare batches
+    dataset['train'] = dataset['train'].shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True)
     dataset['train'] = dataset['train'].repeat(count=-1)
-    dataset['train'] = dataset['train'].batch(batch_size)
+    dataset['train'] = dataset['train'].batch(UNET_params['batch_size'])
     dataset['train'] = dataset['train'].prefetch(buffer_size=AUTOTUNE)
 
-    # -- Validation Dataset --#
+    # Validation Dataset prepare batches
     dataset['val'] = dataset['val'].repeat(count=-1)
-    dataset['val'] = dataset['val'].batch(batch_size)
+    dataset['val'] = dataset['val'].batch(UNET_params['batch_size'])
     dataset['val'] = dataset['val'].prefetch(buffer_size=AUTOTUNE)
 
+    steps_per_epoch = len(train_indexes) // UNET_params['batch_size']
+    validation_steps = len(val_indexes) // UNET_params['batch_size']
+
     # very cool, let's us visualize the training process
-    s_unet_tensorflow = TensorBoard(log_dir=saving_path[1],
-                                    histogram_freq=1,
-                                    write_graph=True,
-                                    write_images=True,
-                                    write_steps_per_second=False,
-                                    update_freq='epoch',
-                                    profile_batch=2,
-                                    embeddings_freq=0,
-                                    embeddings_metadata=None)
+    logger = TensorBoard(log_dir=os.path.join(experiment_target_dir, f"trial_number{trial_number}_log"),
+                         histogram_freq=1,
+                         write_graph=True,
+                         write_images=True,
+                         update_freq='epoch',
+                         profile_batch=2,
+                         embeddings_freq=0,
+                         embeddings_metadata=None)
 
-    sm.set_framework('tf.keras')
+    model = build_UNET_RESNET50_model(
+        input_size=UNET_params['input_size'],
+        learning_rate=UNET_params['learning_rate'],
+        backbone=UNET_params['backbone'])
 
-    if freeze_encoder:
-        model = sm.Unet(backbone_name='resnet50',
-                        input_shape=input_size,
-                        classes=n_classes,
-                        activation='sigmoid',
-                        encoder_freeze=True,
-                        encoder_weights='imagenet')
-    else:
-        model = sm.Unet(backbone_name='resnet50',
-                        input_shape=input_size,
-                        classes=n_classes,
-                        activation='sigmoid',
-                        encoder_freeze=False,
-                        encoder_weights='imagenet')
+    model.fit(
+        x=dataset['train'],
+        batch_size=UNET_params['batch_size'],
+        epochs=UNET_params['epochs'],
+        steps_per_epoch=steps_per_epoch,
+        validation_steps=validation_steps,
+        validation_data=dataset['val'],
+        callbacks=[logger]
+    )
 
-    print(model.summary())
-
-    # here we set the opt and loss, metric values are printed during process
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-                  loss=sm.losses.bce_jaccard_loss,
-                  metrics=[sm.metrics.iou_score])
-
-    steps_per_epoch = 616 // batch_size
-    validation_steps = 154 // batch_size
-
-    model.fit(x=dataset['train'],
-              batch_size=batch_size,
-              callbacks=[s_unet_tensorflow],
-              epochs=num_epochs,
-              steps_per_epoch=steps_per_epoch,
-              validation_steps=validation_steps,
-              validation_data=dataset['val'])
-
-    model.save(saving_path[2])
-    model.save_weights(saving_path[3])
-
-    return 0
+    model.save(os.path.join(experiment_target_dir, f"trial_{str(trial_number)}_model"))

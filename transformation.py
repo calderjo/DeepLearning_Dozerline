@@ -39,5 +39,3 @@ def rand_rotate_image(input_image: tf.Tensor, input_mask: tf.Tensor):
     image = tf.cond(flip_cond, lambda: tf.image.rot90(input_image, k=rotation), lambda: input_image)
     mask = tf.cond(flip_cond, lambda: tf.image.rot90(input_mask, k=rotation), lambda: input_mask)
     return image, mask
-
-
