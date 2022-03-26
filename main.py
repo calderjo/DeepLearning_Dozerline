@@ -17,7 +17,7 @@ def main():
 
     training_base_dir = "/home/jchavez/dataset/Dirt_Gravel_Roads_False_Image"
     save_model_dir = "/home/jchavez/model/dozerline_extractor/unet/test"
-    experiment_name = "test"
+    experiment_name = "test2"
 
     try:
         os.makedirs(os.path.join(save_model_dir, experiment_name))

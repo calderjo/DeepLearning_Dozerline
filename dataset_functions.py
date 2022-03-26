@@ -35,7 +35,6 @@ def load_test_dataset(test_sample_paths):
     """
    Given the path of the test set, the function will load the images and mask and make them suitable for the
    deep learning model
-
     :param test_sample_paths:
    :return:
    """
@@ -116,4 +115,5 @@ def read_image_and_find_mask(img_path: str) -> dict:
     mask = tf.image.convert_image_dtype(mask, tf.uint8)
 
     mask = tf.where(mask == 255, np.dtype('uint8').type(1), mask)
+
     return {'image': image, 'segmentation_mask': mask}

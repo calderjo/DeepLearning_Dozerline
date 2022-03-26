@@ -1,11 +1,11 @@
 import dataset_functions
-import numpy as np
 import os
 import segmentation_models as sm
 import sklearn.model_selection
 import tensorflow as tf
 from tensorflow.python.data import AUTOTUNE
 from tensorflow.python.keras.callbacks import TensorBoard
+import iou_score_metric
 
 
 def write_model_param_file(UNET_params, experiment_dir, trial_number):
@@ -39,7 +39,7 @@ def build_UNET_RESNET50_model(learning_rate, input_size, backbone):
 
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
                   loss=sm.losses.dice_loss,
-                  metrics=[sm.metrics.iou_score])
+                  metrics=[metrics.iou_coef, metrics.dice_coef])
     return model
 
 
@@ -52,25 +52,6 @@ def train_UNET_RESNET50_model(
 ):
     write_model_param_file(UNET_params, experiment_target_dir, trial_number)
     data_samples = dataset_functions.load_data_paths(training_dirs)
-
-    Array = np.array(data_samples)
-
-    # Displaying the array
-    print('Array:\n', Array)
-    file = open("file1.txt", "w+")
-
-    # Saving the array in a text file
-    content = str(Array)
-    file.write(content)
-    file.close()
-
-    # Displaying the contents of the text file
-    file = open("file1.txt", "r")
-    content = file.read()
-
-    print("\nContent in file1.txt:\n", content)
-    file.close()
-    
     shuffle_split = sklearn.model_selection.ShuffleSplit(n_splits=1, test_size=.3, random_state=seed)
     split_gen = shuffle_split.split(X=data_samples)
     train_indexes, val_indexes = next(split_gen)
