@@ -39,13 +39,11 @@ def main():
 
     for numEpochs in testing_epochs:
         UNET_param['epochs'] = numEpochs
-        train_model.train_UNET_RESNET50_model(
-            seed=constants_parameters['seed'],
-            training_dirs=constants_parameters['training_folder'],
-            UNET_params=UNET_param,
-            experiment_target_dir=os.path.join(save_model_dir, experiment_name),
-            trial_number=trial_num
-        )
+        train_model.train_UNET_RESNET50_model(seed=constants_parameters['seed'],
+                                              training_dirs=constants_parameters['training_folder'],
+                                              unet_params=UNET_param,
+                                              experiment_target_dir=os.path.join(save_model_dir, experiment_name),
+                                              trial_number=trial_num)
         trial_num += 1
 
     return 0

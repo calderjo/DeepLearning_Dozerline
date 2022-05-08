@@ -50,9 +50,11 @@ def load_data_paths(training_folders):
         path_of_samples = [
             os.path.abspath(os.path.join(folder, "images", file)) for file in os.listdir(os.path.join(folder, "images"))
         ]
-        path_of_samples.sort()
         data_samples = np.append(data_samples, path_of_samples)
-    data_samples = np.sort(data_samples, kind='mergesort')
+
+    filtered_data_samples = [samples for samples in data_samples if samples.endswith(".png")]
+    # data_samples = np.sort(data_samples, kind='mergesort')
+    data_samples = np.sort(filtered_data_samples, kind='mergesort')
     return data_samples
 
 
