@@ -1,26 +1,26 @@
-import os
-import keras_preprocessing
 import tensorflow as tf
-from matplotlib import pyplot as plt
 from tensorflow import keras
 import dataset_functions
 import segmentation_models as sm
 import iou_score_metric
-import keras_preprocessing.image.utils
-import constant_values
+import os
+from osgeo import gdal
+import numpy as np
 
 
 def entire_region_evaluate(model_name, test_folders_neg, test_folders_pos, batch_size):
+
     UNET_model = keras.models.load_model(
-        model_name, custom_objects={
+        model_name,
+        custom_objects={
             'my_iou_metric': iou_score_metric.my_iou_metric,
-            'dice_loss': sm.losses.dice_loss
+            'binary_crossentropy_plus_dice_loss': sm.losses.bce_dice_loss
         }
     )
 
     UNET_model.compile(optimizer=tf.keras.optimizers.Adam(),
-                       loss=sm.losses.dice_loss,
-                       metrics=[iou_score_metric.my_iou_metric])                
+                       loss=sm.losses.bce_dice_loss,
+                       metrics=[iou_score_metric.my_iou_metric])
 
     test_sample_paths_com = dataset_functions.load_data_paths([test_folders_neg[0], test_folders_pos[0]])
     test_com_image_data = dataset_functions.load_test_dataset(
@@ -87,6 +87,9 @@ def model_evaluate(model_name, test_folders, batch_size, save, save_parameter):
 
 
 def model_inference(model_name, image_chips_folder, save_path):
+    os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
+    os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
+
     data_samples = os.listdir(os.path.join(image_chips_folder[0], "images"))
     filtered_data_samples = [samples for samples in data_samples if samples.endswith(".png")]
     filtered_data_samples = sorted(filtered_data_samples)
@@ -107,63 +110,29 @@ def model_inference(model_name, image_chips_folder, save_path):
     count = 0
     for batch_images, batch_mask in test_images:  # for all the images in test set
 
+        if count == 1:
+            break
+
         batch_predictions = UNET_model.predict(batch_images)  # make a prediction
 
-        for i in batch_predictions:  # plot prediction with the input image and ground truth\
-            pixel_wise_predictions = i.round()
-            image = keras_preprocessing.image.utils.array_to_img(pixel_wise_predictions, scale=False)
+        for prediction in batch_predictions:  # plot prediction with the input image and ground truth
+
             name = filtered_data_samples[count]
             image_name = save_path + str(name)
-            plt.rcParams["figure.figsize"] = (1, 1)
-            plt.rcParams["figure.dpi"] = 256
-            plt.imsave(image_name, image)
-            plt.close()
+            gPNG = gdal.Open(os.path.join(image_chips_folder[0], "images", str(name)))
+
+            size = len(image_name)  # text length
+            replacement = "tif"  # replace with this
+            image_name = image_name.replace(image_name[size - 3:], replacement)
+
+            prediction = np.reshape(prediction, (256, 256))
+
+            output_raster = gdal.GetDriverByName('GTiff').Create(image_name, 256, 256, 1,
+                                                                 gdal.GDT_Float32)  # Open the file
+            output_raster.SetGeoTransform(gPNG.GetGeoTransform())  # Specify its coordinates
+            output_raster.SetProjection(gPNG.GetProjection())  # Exports the coordinate system
+
+            output_raster.GetRasterBand(1).WriteArray(prediction)  # Writes my array to the raster
+
+            output_raster.FlushCache()
             count += 1
-
-"""
-entire_region_evaluate(model_name="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_1_model",
-                       test_folders_neg=[constant_values.north_nunns_imper_lidar["negative"]],
-                       test_folders_pos=[constant_values.north_nunns_imper_lidar["positive"]],
-                       batch_size=32)
-
-entire_region_evaluate(model_name="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_2_model",
-                       test_folders_neg=[constant_values.north_tubbs_imper_lidar["negative"]],
-                       test_folders_pos=[constant_values.north_tubbs_imper_lidar["positive"]],
-                       batch_size=32)
-
-entire_region_evaluate(model_name="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_3_model",
-                       test_folders_neg=[constant_values.south_nunns_imper_lidar["negative"]],
-                       test_folders_pos=[constant_values.south_nunns_imper_lidar["positive"]],
-                       batch_size=32)
-
-entire_region_evaluate(model_name="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_4_model",
-                       test_folders_neg=[constant_values.south_tubbs_imper_lidar["negative"]],
-                       test_folders_pos=[constant_values.south_tubbs_imper_lidar["positive"]],
-                       batch_size=32)
-
-entire_region_evaluate(model_name="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_5_model",
-                       test_folders_neg=[constant_values.pocket_imper_lidar["negative"]],
-                       test_folders_pos=[constant_values.pocket_imper_lidar["positive"]],
-                       batch_size=32)
-"""
-
-model_inference("/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_1_model",
-                [constant_values.north_nunns_imper_lidar["negative"]],
-                "/home/jchavez/prediction/lidar_folds/fold1/")
-
-model_inference("/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_2_model",
-                [constant_values.north_tubbs_imper_lidar["negative"]],
-                "/home/jchavez/prediction/lidar_folds/fold2/")
-
-model_inference("/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_3_model",
-                [constant_values.south_nunns_imper_lidar["negative"]],
-                "/home/jchavez/prediction/lidar_folds/fold3/")
-
-model_inference("/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_4_model",
-                [constant_values.south_tubbs_imper_lidar["negative"]],
-                "/home/jchavez/prediction/lidar_folds/fold4/")
-
-model_inference("/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1/fold_5_model",
-                [constant_values.pocket_imper_lidar["negative"]],
-                "/home/jchavez/prediction/lidar_folds/fold5/")
-

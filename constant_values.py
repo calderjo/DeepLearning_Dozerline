@@ -25,4 +25,3 @@ pocket_imper_lidar = {
     "positive": os.path.join(lidar_base_dir, "Pocket/Positive_Samples"),
     "negative": os.path.join(lidar_base_dir, "Pocket/Negative_Samples")
 }
-

@@ -5,7 +5,7 @@ UNET_param = {
     'batch_size': 32,
     'epochs': 15,
     'input_size': (256, 256, 3),
-    'learning_rate': 0.1,
+    'learning_rate': 0.01,
     'backbone': 'resnet18'
 }
 
@@ -25,13 +25,13 @@ fold5_training = [x for i, x in enumerate(folds) if i != 4]
 
 training_folds = [fold1_training, fold2_training, fold3_training, fold4_training, fold5_training]
 
-count = 1
-for fold in training_folds:
+count = 3
+for fold in training_folds[2:]:
     train_model.train_UNET_RESNET_model(
         seed=479,
         training_dirs=fold,
         unet_params=UNET_param,
-        experiment_target_dir="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment1",
+        experiment_target_dir="/home/jchavez/model/dozerline_extractor/unet/lofo/experiment2",
         trial_number=count
     )
     count += 1
