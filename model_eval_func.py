@@ -8,14 +8,11 @@ from osgeo import gdal
 import numpy as np
 
 
-def entire_region_evaluate(model_name, test_folders_neg, test_folders_pos, batch_size):
+def entire_region_evaluate(model_name, custom_objects, test_folders_pos, test_folders_neg, batch_size):
 
     UNET_model = keras.models.load_model(
         model_name,
-        custom_objects={
-            'my_iou_metric': iou_score_metric.my_iou_metric,
-            'binary_crossentropy_plus_dice_loss': sm.losses.bce_dice_loss
-        }
+        custom_objects=custom_objects
     )
 
     UNET_model.compile(optimizer=tf.keras.optimizers.Adam(),
@@ -43,47 +40,15 @@ def entire_region_evaluate(model_name, test_folders_neg, test_folders_pos, batch
     test_pos_image_data = test_pos_image_data.batch(batch_size)  # same as training
     results_pos = UNET_model.evaluate(x=test_pos_image_data, batch_size=batch_size)
 
-    print("testing: " + str(model_name) + "\n\n")
+    print(f"testing: {str(model_name)} \n\n")
 
-    print("Non Dirt Road Sample")
-    print("neg_loss: " + str(results_neg[0]))  # printing the loss and iou_score
-    print("neg_IOU_score: " + str(results_neg[1]))
-    test_neg_image_data = None
+    print(f"Non Dirt Road Sample \n neg_loss: {str(results_neg[0])} \n neg_IOU_score: {str(results_neg[1])}")
 
-    print("Dirt Road Sample")
-    print("poss_loss: " + str(results_pos[0]))  # printing the loss and iou_score
-    print("poss_IOU_score: " + str(results_pos[1]))
-    test_pos_image_data = None
+    print(f"Dirt Road Sample \n poss_loss: {str(results_pos[0])} \n poss_IOU_score: {str(results_pos[1])}")
 
-    print("Combined Samples")
-    print("com_loss: " + str(results_com[0]))  # printing the loss and iou_score
-    print("com_IOU_score: " + str(results_com[1]))
-    test_com_image_data = None
+    print(f"Combined Samples \n com_loss: {str(results_com[0])} \n com_IOU_score: {str(results_com[1])}")
 
     print("\n\n Test Finished")
-
-
-def model_evaluate(model_name, test_folders, batch_size, save, save_parameter):
-    test_sample_paths = dataset_functions.load_data_paths(test_folders)
-    test_image_data = dataset_functions.load_test_dataset(test_sample_paths)  # apply pre-processing for resnet 50
-    test_image_data = test_image_data.batch(batch_size)  # same as training
-
-    UNET_model = keras.models.load_model(
-        model_name,
-        custom_objects={
-            'iou_score': sm.metrics.IOUScore,
-            'dice_loss': sm.losses.dice_loss
-        }
-    )
-
-    UNET_model.compile(optimizer=tf.keras.optimizers.Adam(),
-                       loss=sm.losses.dice_loss,
-                       metrics=[iou_score_metric.my_iou_metric])
-
-    results = UNET_model.evaluate(x=test_image_data, batch_size=batch_size)  # makes prediction on whole test set
-    print("loss: " + str(results[0]))  # printing the loss and iou_score
-    print("iou_score: " + str(results[1]))
-    print("Dice_score: " + str(results[3]))
 
 
 def model_inference(model_name, image_chips_folder, save_path):
@@ -136,3 +101,49 @@ def model_inference(model_name, image_chips_folder, save_path):
 
             output_raster.FlushCache()
             count += 1
+
+
+def add_pixel_fn(filename: str) -> None:
+    os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
+    os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
+
+    """inserts pixel-function into vrt file named 'filename'
+    Args:
+        filename (:obj:`string`): name of file, into which the function will be inserted
+        resample_name (:obj:`string`): name of resampling method
+    """
+
+    header = """  <VRTRasterBand dataType="Byte" band="1" subClass="VRTDerivedRasterBand">"""
+    contents = """
+    <PixelFunctionType>average</PixelFunctionType>
+    <PixelFunctionLanguage>Python</PixelFunctionLanguage>
+    <PixelFunctionCode><![CDATA[
+    from numba import jit
+    import numpy as np
+    @jit(nogil=True)
+    def average_jit(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize, raster_ysize, buf_radius, gt):
+    np.mean(in_ar, axis = 0,out = out_ar, dtype = 'uint8')
+    
+    def average(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize,raster_ysize, buf_radius, gt):
+    average_jit(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize,raster_ysize, buf_radius, gt)
+    ]]>
+    </PixelFunctionCode>"""
+
+
+def union_of_dozer_line_images(negative_sample, positive_sample, target_file):
+
+    tif_files = []
+
+    for path in os.listdir(negative_sample):
+        # check if current path is a file
+        tif_files.append(os.path.join(negative_sample, path))
+
+    for path in os.listdir(positive_sample):
+        # check if current path is a file
+        tif_files.append(os.path.join(positive_sample, path))
+
+    gdal.BuildVRT(f'{target_file}.vrt', tif_files, options=gdal.BuildVRTOptions(srcNodata=0, VRTNodata=0))
+    add_pixel_fn(f'{target_file}.vrt')
+    ds = gdal.Open(f'{target_file}.vrt')
+    translate_options = gdal.TranslateOptions(gdal.ParseCommandLine("-ot Byte -co COMPRESS=LZW -a_nodata 0"))
+    ds = gdal.Translate(f'{target_file}.tif', ds, options=translate_options)
