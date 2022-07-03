@@ -6,6 +6,7 @@ import iou_score_metric
 import os
 from osgeo import gdal
 import numpy as np
+from skimage.measure import label
 
 
 def entire_region_evaluate(model_name, custom_objects, test_folders_pos, test_folders_neg, batch_size):
@@ -131,6 +132,8 @@ def add_pixel_fn(filename: str) -> None:
 
 
 def union_of_dozer_line_images(negative_sample, positive_sample, target_file):
+    os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
+    os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
 
     tif_files = []
 
@@ -145,5 +148,5 @@ def union_of_dozer_line_images(negative_sample, positive_sample, target_file):
     gdal.BuildVRT(f'{target_file}.vrt', tif_files, options=gdal.BuildVRTOptions(srcNodata=0, VRTNodata=0))
     add_pixel_fn(f'{target_file}.vrt')
     ds = gdal.Open(f'{target_file}.vrt')
-    translate_options = gdal.TranslateOptions(gdal.ParseCommandLine("-ot Byte -co COMPRESS=LZW -a_nodata 0"))
+    translate_options = gdal.TranslateOptions(gdal.ParseCommandLine("-ot Byte -co COMPRESS=LZW -a_nodata 255"))
     ds = gdal.Translate(f'{target_file}.tif', ds, options=translate_options)

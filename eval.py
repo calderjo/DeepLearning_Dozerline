@@ -1,3 +1,21 @@
+import model_eval_func
+
+# model_eval_func.union_of_dozer_line_images(r"/home/jchavez/prediction/north_tubb_prediction/diceloss/negative",
+#                                            r"/home/jchavez/prediction/north_tubb_prediction/diceloss/positive",
+#                                            "output_dice_loss2"
+#                                            )
+
+
+
+
+
+
+
+
+
+
+
+
 
 """
 evaluate_model(
