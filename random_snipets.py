@@ -35,15 +35,6 @@
 #
 # model_eval_func.union_of_dozer_line_images(,
 
-
-
-
-
-
-
-
-
-
 # from osgeo import gdal
 # import os
 #
