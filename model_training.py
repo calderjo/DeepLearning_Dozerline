@@ -1,4 +1,4 @@
-import dataset_functions
+import model_pre_processing
 import os
 import segmentation_models as sm
 import sklearn.model_selection
@@ -49,13 +49,13 @@ def train_UNET_model(
         trial_name
 ):
     write_model_param_file(model_params, experiment_target_dir, trial_name)
-    data_samples = dataset_functions.load_data_paths(training_dirs)
+    data_samples = model_pre_processing.load_data_paths(training_dirs)
 
     shuffle_split = sklearn.model_selection.ShuffleSplit(n_splits=1, test_size=.3, random_state=seed)
     split_gen = shuffle_split.split(X=data_samples)
     train_indexes, val_indexes = next(split_gen)
 
-    dataset = dataset_functions.load_training_validation_dataset(
+    dataset = model_pre_processing.load_training_validation_dataset(
         training=data_samples[train_indexes],
         validation=data_samples[val_indexes],
         seed=seed

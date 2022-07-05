@@ -1,58 +1,19 @@
 import tensorflow as tf
 from tensorflow import keras
-import dataset_functions
+import model_pre_processing
 import segmentation_models as sm
-import iou_score_metric
-import os
-from osgeo import gdal
+import model_metrics
 import numpy as np
 from skimage.measure import label
+from skimage import morphology
+from osgeo import gdal
+import os
+from PIL import Image
 
+def model_inference(model_name, image_chips_folder, output_directory):
 
-def entire_region_evaluate(model_name, custom_objects, test_folders_pos, test_folders_neg, batch_size):
+    os.makedirs(output_directory, exist_ok=True)
 
-    UNET_model = keras.models.load_model(
-        model_name,
-        custom_objects=custom_objects
-    )
-
-    UNET_model.compile(optimizer=tf.keras.optimizers.Adam(),
-                       loss=sm.losses.bce_dice_loss,
-                       metrics=[iou_score_metric.my_iou_metric])
-
-    test_sample_paths_com = dataset_functions.load_data_paths([test_folders_neg[0], test_folders_pos[0]])
-    test_com_image_data = dataset_functions.load_test_dataset(
-        test_sample_paths_com)  # apply pre-processing for resnet 50
-
-    test_com_image_data = test_com_image_data.batch(batch_size)  # same as training
-    results_com = UNET_model.evaluate(x=test_com_image_data, batch_size=batch_size)
-
-    test_sample_paths_neg = dataset_functions.load_data_paths(test_folders_neg)
-    test_neg_image_data = dataset_functions.load_test_dataset(
-        test_sample_paths_neg)  # apply pre-processing for resnet 50
-
-    test_neg_image_data = test_neg_image_data.batch(batch_size)  # same as training
-    results_neg = UNET_model.evaluate(x=test_neg_image_data, batch_size=batch_size)
-
-    test_sample_paths_pos = dataset_functions.load_data_paths(test_folders_pos)
-    test_pos_image_data = dataset_functions.load_test_dataset(
-        test_sample_paths_pos)  # apply pre-processing for resnet 50
-
-    test_pos_image_data = test_pos_image_data.batch(batch_size)  # same as training
-    results_pos = UNET_model.evaluate(x=test_pos_image_data, batch_size=batch_size)
-
-    print(f"testing: {str(model_name)} \n\n")
-
-    print(f"Non Dirt Road Sample \n neg_loss: {str(results_neg[0])} \n neg_IOU_score: {str(results_neg[1])}")
-
-    print(f"Dirt Road Sample \n poss_loss: {str(results_pos[0])} \n poss_IOU_score: {str(results_pos[1])}")
-
-    print(f"Combined Samples \n com_loss: {str(results_com[0])} \n com_IOU_score: {str(results_com[1])}")
-
-    print("\n\n Test Finished")
-
-
-def model_inference(model_name, image_chips_folder, save_path):
     os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
     os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
 
@@ -63,14 +24,14 @@ def model_inference(model_name, image_chips_folder, save_path):
     UNET_model = keras.models.load_model(
         model_name,
         custom_objects={
-            'my_iou_metric': iou_score_metric.my_iou_metric,
+            'my_iou_metric': model_metrics.my_iou_metric,
             'dice_loss': sm.losses.dice_loss
         }
     )
 
     # finds all images in the test set
-    test_images_label = dataset_functions.load_data_paths(image_chips_folder)
-    test_images = dataset_functions.load_test_dataset(test_images_label)
+    test_images_label = model_pre_processing.load_data_paths(image_chips_folder)
+    test_images = model_pre_processing.load_test_dataset(test_images_label)
     test_images = test_images.batch(32)
 
     count = 0
@@ -84,7 +45,7 @@ def model_inference(model_name, image_chips_folder, save_path):
         for prediction in batch_predictions:  # plot prediction with the input image and ground truth
 
             name = filtered_data_samples[count]
-            image_name = save_path + str(name)
+            image_name = output_directory + str(name)
             gPNG = gdal.Open(os.path.join(image_chips_folder[0], "images", str(name)))
 
             size = len(image_name)  # text length
@@ -124,14 +85,14 @@ def add_pixel_fn(filename: str) -> None:
     @jit(nogil=True)
     def average_jit(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize, raster_ysize, buf_radius, gt):
     np.mean(in_ar, axis = 0,out = out_ar, dtype = 'uint8')
-    
+
     def average(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize,raster_ysize, buf_radius, gt):
     average_jit(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize,raster_ysize, buf_radius, gt)
     ]]>
     </PixelFunctionCode>"""
 
 
-def union_of_dozer_line_images(negative_sample, positive_sample, target_file):
+def union_of_dozer_line_images(negative_sample, positive_sample, output_raster):
     os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
     os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
 
@@ -145,8 +106,9 @@ def union_of_dozer_line_images(negative_sample, positive_sample, target_file):
         # check if current path is a file
         tif_files.append(os.path.join(positive_sample, path))
 
-    gdal.BuildVRT(f'{target_file}.vrt', tif_files, options=gdal.BuildVRTOptions(srcNodata=0, VRTNodata=0))
-    add_pixel_fn(f'{target_file}.vrt')
-    ds = gdal.Open(f'{target_file}.vrt')
+    gdal.BuildVRT(f'{output_raster}.vrt', tif_files, options=gdal.BuildVRTOptions(srcNodata=0, VRTNodata=0))
+    add_pixel_fn(f'{output_raster}.vrt')
+    ds = gdal.Open(f'{output_raster}.vrt')
     translate_options = gdal.TranslateOptions(gdal.ParseCommandLine("-ot Byte -co COMPRESS=LZW -a_nodata 255"))
-    ds = gdal.Translate(f'{target_file}.tif', ds, options=translate_options)
+    ds = gdal.Translate(f'{output_raster}.tif', ds, options=translate_options)
+

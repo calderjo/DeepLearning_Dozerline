@@ -1,8 +1,8 @@
 import os
-import train_model
+import model_training
 import tensorflow as tf
 import segmentation_models as sm
-import constant_values
+import dataset_paths
 
 
 def main():
@@ -20,10 +20,10 @@ def main():
 
     constants_parameters = {
         'training_folder': [
-            constant_values.pocket_imper_lidar["positive"],
-            constant_values.south_nunns_imper_lidar["positive"],
-            constant_values.south_tubbs_imper_lidar["positive"],
-            constant_values.north_nunns_imper_lidar["positive"]
+            dataset_paths.pocket_imper_lidar["positive"],
+            dataset_paths.south_nunns_imper_lidar["positive"],
+            dataset_paths.south_tubbs_imper_lidar["positive"],
+            dataset_paths.north_nunns_imper_lidar["positive"]
         ],
         'seed': 479
     }
@@ -37,14 +37,14 @@ def main():
             'input_shape': (256, 256, 3),
             'batch_size': 32,
             'backbone_name': 'resnet18',
-            'activation': 'softmax',
+            'activation': 'sigmoid',
             'classes': 1,
             'loss': sm.losses.bce_dice_loss,
             'epochs': numEpochs,
             'learning_rate': .001
         }
 
-        train_model.train_UNET_model(
+        model_training.train_UNET_model(
             seed=constants_parameters['seed'],
             training_dirs=constants_parameters['training_folder'],
             model_params=UNET_param,
