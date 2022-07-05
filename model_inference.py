@@ -7,59 +7,58 @@ from osgeo import gdal
 import os
 
 
-def model_inference(model_name, image_chips_folder, output_directory):
+def model_inference(model_name, custom_objects, image_samples_folder, output_directory):
 
     os.makedirs(output_directory, exist_ok=True)
 
     os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
     os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
 
-    data_samples = os.listdir(os.path.join(image_chips_folder[0], "images"))
-    filtered_data_samples = [samples for samples in data_samples if samples.endswith(".png")]
-    filtered_data_samples = sorted(filtered_data_samples)
+    for folder in image_samples_folder:
 
-    UNET_model = keras.models.load_model(
-        model_name,
-        custom_objects={
-            'my_iou_metric': model_metrics.my_iou_metric,
-            'dice_loss': sm.losses.dice_loss
-        }
-    )
+        data_samples = os.listdir(os.path.join(folder, "images"))
+        filtered_data_samples = [samples for samples in data_samples if samples.endswith(".png")]
+        filtered_data_samples = sorted(filtered_data_samples)
 
-    # finds all images in the test set
-    test_images_label = model_pre_processing.load_data_paths(image_chips_folder)
-    test_images = model_pre_processing.load_test_dataset(test_images_label)
-    test_images = test_images.batch(32)
+        UNET_model = keras.models.load_model(
+            model_name,
+            custom_objects=custom_objects
+        )
 
-    count = 0
-    for batch_images, batch_mask in test_images:  # for all the images in test set
+        # finds all images in the test set
+        test_images_label = model_pre_processing.load_data_paths([folder])
+        test_images = model_pre_processing.load_test_dataset(test_images_label)
+        test_images = test_images.batch(32)
 
-        if count == 1:
-            break
+        count = 0
+        for batch_images, batch_mask in test_images:  # for all the images in test set
 
-        batch_predictions = UNET_model.predict(batch_images)  # make a prediction
+            if count == 1:
+                break
 
-        for prediction in batch_predictions:  # plot prediction with the input image and ground truth
+            batch_predictions = UNET_model.predict(batch_images)  # make a prediction
 
-            name = filtered_data_samples[count]
-            image_name = output_directory + str(name)
-            gPNG = gdal.Open(os.path.join(image_chips_folder[0], "images", str(name)))
+            for prediction in batch_predictions:  # plot prediction with the input image and ground truth
 
-            size = len(image_name)  # text length
-            replacement = "tif"  # replace with this
-            image_name = image_name.replace(image_name[size - 3:], replacement)
+                name = filtered_data_samples[count]
+                image_name = os.path.join(output_directory, str(name))
+                gPNG = gdal.Open(os.path.join(folder, "images", str(name)))
 
-            prediction = np.reshape(prediction, (256, 256))
+                size = len(image_name)  # text length
+                replacement = "tif"  # replace with this
+                image_name = image_name.replace(image_name[size - 3:], replacement)
 
-            output_raster = gdal.GetDriverByName('GTiff').Create(image_name, 256, 256, 1,
-                                                                 gdal.GDT_Float32)  # Open the file
-            output_raster.SetGeoTransform(gPNG.GetGeoTransform())  # Specify its coordinates
-            output_raster.SetProjection(gPNG.GetProjection())  # Exports the coordinate system
+                prediction = np.reshape(prediction, (256, 256))
 
-            output_raster.GetRasterBand(1).WriteArray(prediction)  # Writes my array to the raster
+                output_raster = gdal.GetDriverByName('GTiff').Create(image_name, 256, 256, 1,
+                                                                     gdal.GDT_Float32)  # Open the file
+                output_raster.SetGeoTransform(gPNG.GetGeoTransform())  # Specify its coordinates
+                output_raster.SetProjection(gPNG.GetProjection())  # Exports the coordinate system
 
-            output_raster.FlushCache()
-            count += 1
+                output_raster.GetRasterBand(1).WriteArray(prediction)  # Writes my array to the raster
+
+                output_raster.FlushCache()
+                count += 1
 
 
 def add_pixel_fn(filename: str) -> None:
@@ -89,19 +88,15 @@ def add_pixel_fn(filename: str) -> None:
     </PixelFunctionCode>"""
 
 
-def union_of_dozer_line_images(negative_sample, positive_sample, output_raster):
+def union_of_dozer_line_images(samples, output_raster):
     os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'
     os.environ['GDAL_DATA'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/'
 
     tif_files = []
 
-    for path in os.listdir(negative_sample):
+    for path in os.listdir(samples):
         # check if current path is a file
-        tif_files.append(os.path.join(negative_sample, path))
-
-    for path in os.listdir(positive_sample):
-        # check if current path is a file
-        tif_files.append(os.path.join(positive_sample, path))
+        tif_files.append(os.path.join(samples, path))
 
     gdal.BuildVRT(f'{output_raster}.vrt', tif_files, options=gdal.BuildVRTOptions(srcNodata=0, VRTNodata=0))
     add_pixel_fn(f'{output_raster}.vrt')

@@ -46,6 +46,7 @@ def load_test_dataset(test_sample_paths):
 
 def load_data_paths(training_folders):
     data_samples = np.empty(0, dtype=object)
+
     for folder in training_folders:
         path_of_samples = [
             os.path.abspath(os.path.join(folder, "images", file)) for file in os.listdir(os.path.join(folder, "images"))
