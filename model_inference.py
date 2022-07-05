@@ -1,14 +1,11 @@
-import tensorflow as tf
 from tensorflow import keras
 import model_pre_processing
 import segmentation_models as sm
 import model_metrics
 import numpy as np
-from skimage.measure import label
-from skimage import morphology
 from osgeo import gdal
 import os
-from PIL import Image
+
 
 def model_inference(model_name, image_chips_folder, output_directory):
 
