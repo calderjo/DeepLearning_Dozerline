@@ -17,14 +17,15 @@ def map_wide_based_evaluation(prediction_map, ground_truth_map):
     ground_truth_array = np.array(ground_truth_array)
 
     print(f'IOU score (map wide): {model_metrics.my_iou_metric(ground_truth_array, prediction_array)}')
+    return
 
-    ground_truth_array = ground_truth_array.flatten()
-    prediction_array = prediction_array.flatten()
-
-    print(f'F1 score weighted (map wide): {metrics.f1_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
-    print(f'Precision score weighted (map wide): {metrics.precision_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
-    print(f'Recall score weighted (map wide): {metrics.recall_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
-    print(f'Accuracy score weighted (map wide): {metrics.accuracy_score(ground_truth_array, prediction_array)}')
+    # ground_truth_array = ground_truth_array.flatten()
+    # prediction_array = prediction_array.flatten()
+    #
+    # print(f'F1 score weighted (map wide): {metrics.f1_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
+    # print(f'Precision score weighted (map wide): {metrics.precision_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
+    # print(f'Recall score weighted (map wide): {metrics.recall_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
+    # print(f'Accuracy score weighted (map wide): {metrics.accuracy_score(ground_truth_array, prediction_array)}')
 
 
 def image_chip_based_evaluation(model_name, custom_objects, positive_sample, negative_sample, batch_size):

@@ -17,7 +17,6 @@ def inference(model_path, costume_object, positive_samples, negative_samples, ou
         os.path.join(output_directory, "samples/"),
         os.path.join(output_directory, "map_wide_view"))
 
-
 inference(
     "/home/jchavez/model/dozerline_extractor/unet/dataset_lidar/experiment1/resnet18/experiment_2/trial_2_model",
     {"my_iou_metric": model_metrics.my_iou_metric,"dice_loss": sm.losses.dice_loss},
