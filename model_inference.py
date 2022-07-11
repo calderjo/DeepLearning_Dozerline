@@ -1,7 +1,5 @@
 from tensorflow import keras
 import model_pre_processing
-import segmentation_models as sm
-import model_metrics
 import numpy as np
 from osgeo import gdal
 import os

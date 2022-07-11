@@ -5,6 +5,7 @@ from osgeo import gdal
 import os
 from PIL import Image
 
+
 def remove_small_objects(input_raster, output_raster, min_size, connectivity):
     Image.MAX_IMAGE_PIXELS = 2000000000
     os.environ['PROJ_LIB'] = '/home/jchavez/miniconda3/envs/deepLearning_dozerLine/share/proj/'

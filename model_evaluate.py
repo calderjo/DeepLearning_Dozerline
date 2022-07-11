@@ -7,25 +7,28 @@ from PIL import Image
 from tensorflow import keras
 from sklearn import metrics
 
-def map_wide_based_evaluation(prediction_map, ground_truth_map):
+
+def map_wide_based_evaluation(prediction_map_path, ground_truth_map_path):
     Image.MAX_IMAGE_PIXELS = 2000000000
 
-    prediction_array = Image.open(prediction_map)
+    prediction_array = Image.open(prediction_map_path)
     prediction_array = np.array(prediction_array)
 
-    ground_truth_array = Image.open(ground_truth_map)
+    ground_truth_array = Image.open(ground_truth_map_path)
     ground_truth_array = np.array(ground_truth_array)
 
-    print(f'IOU score (map wide): {model_metrics.my_iou_metric(ground_truth_array, prediction_array)}')
-    return
+    print(f'Results obtained by: {prediction_map_path}')
 
-    # ground_truth_array = ground_truth_array.flatten()
-    # prediction_array = prediction_array.flatten()
-    #
-    # print(f'F1 score weighted (map wide): {metrics.f1_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
-    # print(f'Precision score weighted (map wide): {metrics.precision_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
-    # print(f'Recall score weighted (map wide): {metrics.recall_score(ground_truth_array, prediction_array, average="weighted", zero_division=1)}')
-    # print(f'Accuracy score weighted (map wide): {metrics.accuracy_score(ground_truth_array, prediction_array)}')
+    print(f'IOU score (map wide): {model_metrics.my_iou_metric(ground_truth_array, prediction_array)}')
+
+    ground_truth_array = ground_truth_array.flatten()
+    prediction_array = prediction_array.flatten()
+
+    print(f'F1 score (map wide): {metrics.f1_score(ground_truth_array, prediction_array, zero_division=1)}')
+    print(f'Precision score (map wide): {metrics.precision_score(ground_truth_array, prediction_array, zero_division=1)}')
+    print(f'Recall score (map wide): {metrics.recall_score(ground_truth_array, prediction_array,  zero_division=1)}')
+    print(f'Accuracy score (map wide): {metrics.accuracy_score(ground_truth_array, prediction_array)}')
+    return
 
 
 def image_chip_based_evaluation(model_name, custom_objects, positive_sample, negative_sample, batch_size):

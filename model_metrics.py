@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
+
 def get_iou_vector(a, b):
     # Numpy version
     batch_size = a.shape[0]
